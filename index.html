@@ -2365,7 +2365,6 @@ function startDisplayListener() {
 }
 
 function renderDisplay(data) {
-  try {
   if (data.state === 'ended') {
     document.getElementById('dp-main').innerHTML = `
       <div class="dp-wait-logo" style="font-size:clamp(36px,7vw,80px)">AVSLUTAT</div>
@@ -2634,7 +2633,6 @@ function renderDpPodium(teams) {
       @keyframes dpPodIn { from{opacity:0;transform:translateY(50px)} to{opacity:1;transform:translateY(0)} }
       @keyframes dpPulse { 0%,100%{filter:brightness(1) drop-shadow(0 0 0px transparent)} 50%{filter:brightness(1.3) drop-shadow(0 0 20px gold)} }
     </style>`;
-} catch(err) { console.error('renderDisplay error:', err); }
 }
 
 /* ============================================================
