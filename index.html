@@ -1275,7 +1275,7 @@ select option { background: var(--bg2); }
             <button class="btn btn-primary btn-sm" onclick="nextQ()">Nästa →</button>
             <button class="btn btn-outline-green btn-sm" id="toggleScoreBtn" onclick="toggleScores()">👁 Dölj poäng</button>
             <button class="btn btn-outline-green btn-sm" onclick="showPodium()">🏆 Slutresultat</button>
-            <button class="btn btn-danger btn-sm" onclick="endLive()">■ Avsluta</button>
+            <button class="btn btn-danger btn-sm" onclick="confirmEnd()">■ Avsluta</button>
           </div>
         </div>
 
@@ -2029,6 +2029,10 @@ function startLive() {
 
 let scoresHidden = false;
 
+function confirmEnd() {
+  if (confirm('Är du säker på att du vill avsluta quizet? Alla poäng nollställs.')) endLive();
+}
+
 function endLive() {
   stopTimer();
   liveState = null;
@@ -2036,6 +2040,9 @@ function endLive() {
   document.getElementById('live-setup').style.display = 'block';
   document.getElementById('live-view').classList.remove('active');
   document.getElementById('lbadge').style.display = 'none';
+  // Restore startShowBtn for next time
+  const ssb = document.getElementById('startShowBtn');
+  if (ssb) ssb.style.display = '';
   syncDisp({ state: 'ended', ts: Date.now() });
 }
 
@@ -2401,9 +2408,9 @@ function renderDisplay(data) {
     const cardW = teams.length <= 3 ? 'min(220px,22vw)' : 'min(180px,18vw)';
     document.getElementById('dp-main').innerHTML = `
       <div style="font-family:'Bebas Neue',sans-serif;text-align:center;margin-bottom:8px">
-        <div style="font-size:clamp(11px,1.5vw,16px);letter-spacing:8px;color:rgba(255,255,255,0.35);text-transform:uppercase;margin-bottom:6px">KVÄLLENS DELTAGARE</div>
+        <div style="font-size:clamp(18px,2.8vw,36px);letter-spacing:8px;color:rgba(255,255,255,0.6);text-transform:uppercase;margin-bottom:10px">KVÄLLENS DELTAGARE</div>
         <div style="font-size:clamp(32px,5.5vw,70px);letter-spacing:4px;background:linear-gradient(135deg,#fff 0%,#b794f4 50%,#00E676 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1">
-          ⭐ VÄLKOMMEN TILL SHOWET ⭐
+          LET THE SHOW BEGIN
         </div>
       </div>
       <div style="display:flex;flex-wrap:wrap;gap:14px;justify-content:center;max-width:1200px;width:100%">
@@ -2473,7 +2480,7 @@ function renderDisplay(data) {
       const isLead = !hidden && t.score === mx && t.score > 0;
       return `<div class="dp-sbc ${isLead ? 'lead' : ''}"
         style="background:${isLead ? 'rgba(255,215,0,0.12)' : t.color+'22'};border-color:${isLead ? 'rgba(255,215,0,0.6)' : t.color+'66'}">
-        ${t.avatar ? `<img src="${t.avatar}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;display:block;margin:0 auto 4px">` : `<div style="width:36px;height:36px;border-radius:50%;background:${t.color}44;display:flex;align-items:center;justify-content:center;margin:0 auto 4px;font-size:18px">⚽</div>`}
+        ${t.avatar ? `<img src="${t.avatar}" style="width:56px;height:56px;border-radius:10px;object-fit:cover;display:block;margin:0 auto 6px">` : `<div style="width:56px;height:56px;border-radius:10px;background:${t.color}44;display:flex;align-items:center;justify-content:center;margin:0 auto 6px;font-size:28px">⚽</div>`}
         <div class="dp-sc-name" style="color:${isLead ? 'rgba(255,215,0,0.9)' : 'rgba(255,255,255,0.8)'};font-size:12px;letter-spacing:0.5px">${esc(t.name)}</div>
         <div class="dp-sc-score" style="color:${isLead ? '#FFD700' : '#fff'}">${hidden ? '?' : t.score}</div>
       </div>`;
@@ -2530,7 +2537,8 @@ function buildDpQuestion(q, revealed, data) {
   if (q.type === 'mc') {
     const L = ['A','B','C','D'];
     html += `<div class="dp-choices">${(q.options || []).map((o, i) => {
-      const corrArr = Array.isArray(q.correct) ? q.correct : [q.correct ?? 0];
+      // Normalize correct: could be number, array, or Firebase-restored array
+      let corrArr = Array.isArray(q.correct) ? q.correct : (q.correct !== undefined && q.correct !== null ? [Number(q.correct)] : [0]);
       const cls = revealed ? (corrArr.includes(i) ? 'dpc' : 'dpw') : '';
       return `<div class="dp-choice ${cls}">
         <span class="dp-choice-letter">${L[i]}</span>${esc(o)}
@@ -2538,7 +2546,11 @@ function buildDpQuestion(q, revealed, data) {
     }).join('')}</div>`;
   } else if (q.type === 'tf') {
     let tc = '', fc = '';
-    if (revealed) { tc = q.correct === true ? 'dpc' : 'dpw'; fc = q.correct === false ? 'dpc' : 'dpw'; }
+    if (revealed) {
+      const tfTrue = q.correct === true || q.correct === 'true';
+      tc = tfTrue ? 'dpc' : 'dpw';
+      fc = !tfTrue ? 'dpc' : 'dpw';
+    }
     html += `<div class="dp-tf">
       <div class="dp-tf-btn dp-tf-t ${tc}">✓ Sant</div>
       <div class="dp-tf-btn dp-tf-f ${fc}">✗ Falskt</div>
@@ -2549,7 +2561,7 @@ function buildDpQuestion(q, revealed, data) {
     html += `
       <div id="aud-anim" style="display:flex;flex-direction:column;align-items:center;gap:12px;margin-top:4px">
         <div style="font-family:'Bebas Neue',sans-serif;font-size:clamp(13px,1.8vw,20px);letter-spacing:5px;
-          color:rgba(255,255,255,0.4);text-transform:uppercase">🗳️ PUBLIKFRÅGA — NI BESTÄMMER</div>
+          color:rgba(255,255,255,0.7);text-transform:uppercase;font-size:clamp(22px,3.5vw,48px)">🗳️ PUBLIKFRÅGA — NI BESTÄMMER</div>
         <div style="display:flex;gap:16px;justify-content:center;position:relative;height:60px;overflow:visible">
           ${[0,1,2,3,4,5].map(n=>`
             <div style="font-size:clamp(28px,4vw,48px);
