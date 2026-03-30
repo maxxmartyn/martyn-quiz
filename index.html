@@ -501,6 +501,13 @@ select option { background: var(--bg2); }
 .tag-tf { border-color: rgba(255,255,255,0.2); color: var(--text2); background: rgba(255,255,255,0.03); }
 .tag-open { border-color: rgba(220,220,100,0.4); color: #dddd60; background: rgba(220,220,100,0.05); }
 .qchev { color: var(--text3); font-size: 11px; flex-shrink: 0; transition: transform 0.2s; }
+.qmovebtn {
+  background: var(--bg3); border: 1px solid var(--border2); color: var(--text2);
+  width: 28px; height: 28px; cursor: pointer; font-size: 14px; border-radius: 6px;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  transition: all 0.15s;
+}
+.qmovebtn:hover { background: var(--green); color: #000; border-color: var(--green); }
 .qbody { padding: 24px; display: none; border-top: 1px solid var(--border); background: var(--bg3); }
 .qbody.open { display: block; }
 .qchev.open { transform: rotate(180deg); }
@@ -996,6 +1003,11 @@ select option { background: var(--bg2); }
 .dp-tbf.warn { background: linear-gradient(90deg,#ef4444,#ff6b6b); }
 
 /* ── Timer number ── */
+#dp-timer-row {
+  position: absolute;
+  top: 12px; right: 20px;
+  z-index: 10;
+}
 .dp-timer-big {
   font-family: 'Bebas Neue', sans-serif;
   font-size: clamp(36px, 6vw, 72px);
@@ -1010,8 +1022,8 @@ select option { background: var(--bg2); }
   background: rgba(239,68,68,0.2);
   border-color: rgba(239,68,68,0.6);
 }
-@keyframes screenFlash { 0%,100%{background:rgba(239,68,68,0)} 50%{background:rgba(239,68,68,0.18)} }
-#display-panel.flash-warn::after { animation: screenFlash 0.5s ease infinite; }
+@keyframes timerPulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.08)} }
+.dp-timer-big.warn { animation: timerPulse 0.5s ease infinite !important; }
 
 /* ── Scoreboard ── */
 .dp-sb-wrap {
@@ -1042,11 +1054,15 @@ select option { background: var(--bg2); }
   font-size: 36px; color: #fff; line-height: 1;
 }
 .dp-sbc.lead .dp-sc-score { color: #FFD700; font-size: 44px; }
+@keyframes scorePop { 0%{transform:scale(1)} 30%{transform:scale(1.25);filter:brightness(1.5)} 100%{transform:scale(1)} }
+.dp-sbc.score-pop { animation: scorePop 0.5s cubic-bezier(.34,1.56,.64,1); }
 .dp-sbc.lead .dp-sc-name  { color: rgba(255,215,0,0.8); }
 
 /* ── Main content area ── */
 .dp-main {
-  flex: 1; display: flex; flex-direction: column;
+  flex: 1;
+  position: relative;
+  overflow: hidden; display: flex; flex-direction: column;
   align-items: center; justify-content: center;
   padding: 8px 40px; gap: 8px;
   overflow: hidden; position: relative; z-index: 1; min-height: 0;
@@ -1336,14 +1352,15 @@ select option { background: var(--bg2); }
   <div class="dp-header">
     <div class="dp-logo">THE MARTYN SHOW</div>
     <div class="dp-qinfo" id="dp-qinfo">VÄNTAR...</div>
+    <button onclick="toggleFS()" style="background:none;border:1px solid rgba(255,255,255,0.2);color:rgba(255,255,255,0.5);padding:4px 10px;cursor:pointer;font-size:12px;border-radius:6px;letter-spacing:1px" title="Helskärm">⛶</button>
   </div>
   <div class="dp-timerbar" id="dp-timerbar"><div class="dp-tbf" id="dp-tbf" style="width:0%"></div></div>
   <!-- Timer sits above scoreboard, hidden until started -->
-  <div id="dp-timer-row" style="display:none;justify-content:center;padding:6px 0;flex-shrink:0;position:relative;z-index:2">
-    <div id="dp-tb" class="dp-timer-big"></div>
-  </div>
   <div class="dp-sb-wrap" id="dp-sbw"><div class="dp-sb" id="dp-sb"></div></div>
   <div class="dp-main" id="dp-main">
+    <div id="dp-timer-row" style="display:none">
+      <div id="dp-tb" class="dp-timer-big"></div>
+    </div>
     <div class="dp-wait-logo" style="text-align:center">THE MARTYN<br>SHOW</div>
     <div class="dp-wait-sub" style="margin-top:12px">QUIZ STARTAR SNART ✦</div>
   </div>
@@ -1503,8 +1520,19 @@ function fmtD(ts) { return ts ? new Date(ts).toLocaleDateString('sv-SE') : '—'
 /* ============================================================
    MODE SELECTION
 ============================================================ */
+const ADMIN_PIN = '1234'; // ← ändra detta!
+
 function setMode(m) {
   if (m === 'qm') {
+    // Check sessionStorage first (so page refresh within session doesn't re-ask)
+    if (sessionStorage.getItem('qm_auth') !== ADMIN_PIN) {
+      const entered = prompt('🔐 Ange PIN för att öppna admin-panelen:');
+      if (entered !== ADMIN_PIN) {
+        document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;background:#0d0f1a;color:#f87171;font-family:sans-serif;font-size:22px;letter-spacing:2px">❌ Fel PIN — uppdatera sidan för att försöka igen</div>';
+        return;
+      }
+      sessionStorage.setItem('qm_auth', ADMIN_PIN);
+    }
     document.getElementById('qm-panel').classList.add('active');
     loadLocal();
     renderQuizList();
@@ -1590,6 +1618,9 @@ function editQuiz(id) {
   document.getElementById('builder-area').style.display = 'block';
   document.getElementById('qname').value = getQ(id).name;
   renderQs();
+  // Reset save button
+  const btn = document.querySelector('.builder-top .btn-primary');
+  if (btn) { btn.textContent = '✓ Spara Quiz'; btn.disabled = false; }
   switchTab('builder');
 }
 
@@ -1787,6 +1818,8 @@ function buildSlideCard(qn, i) {
       <div class="qnum" style="color:#60b4ff;border-color:rgba(100,180,255,.3);background:rgba(100,180,255,.06)">📋 ${i+1}</div>
       <div class="qprev">${esc(qn.title || '(ingen rubrik)')}</div>
       <div class="qtag tag-slide">Kategori-slide</div>
+      <button class="qmovebtn" onclick="event.stopPropagation();moveQ(${i},-1)" title="Flytta upp">↑</button>
+      <button class="qmovebtn" onclick="event.stopPropagation();moveQ(${i},1)" title="Flytta ned">↓</button>
       <span class="qchev" id="qchev_${i}">▾</span>
     </div>
     <div class="qbody" id="qb_${i}">
@@ -2175,15 +2208,21 @@ function stopTimer() {
 function renderScEnt() {
   if (!liveState) return;
   // Keep score entry in ORIGINAL team order (never sort) to avoid index bugs
-  document.getElementById('score-entry').innerHTML = liveState.teams.map((t, i) => `
-    <div class="scrow">
+  // Sort by score desc, but keep original index for apSc
+  const ranked = liveState.teams
+    .map((t, i) => ({ ...t, origIdx: i }))
+    .sort((a, b) => b.score - a.score);
+  const medals = ['🥇','🥈','🥉'];
+  document.getElementById('score-entry').innerHTML = ranked.map((t, rank) => `
+    <div class="scrow" style="border-left:3px solid ${t.color};background:${t.color}0d">
+      <div style="font-size:18px;min-width:28px">${medals[rank] || '#'+(rank+1)}</div>
       <div class="scdot" style="background:${t.color}"></div>
-      <div class="scname">${esc(t.name)}</div>
-      <div class="sctot" id="stot_${i}">${t.score}</div>
+      <div class="scname" style="font-size:16px;font-weight:800;color:#fff">${esc(t.name)}</div>
+      <div class="sctot" id="stot_${t.origIdx}">${t.score}</div>
       <div class="sciw">
-        <button class="scb m" onclick="apSc(${i},-1)">−</button>
-        <input type="number" id="pts_${i}" value="1" style="width:52px;text-align:center">
-        <button class="scb p" onclick="apSc(${i},1)">+</button>
+        <button class="scb m" onclick="apSc(${t.origIdx},-1)">−</button>
+        <input type="number" id="pts_${t.origIdx}" value="1" style="width:52px;text-align:center">
+        <button class="scb p" onclick="apSc(${t.origIdx},1)">+</button>
       </div>
     </div>`).join('');
 }
@@ -2451,18 +2490,16 @@ function renderDisplay(data) {
   const tbr = document.getElementById('dp-timer-row');
   const tbf = document.getElementById('dp-tbf');
   if (tr && tv > 0) {
-    tbr.style.display = 'flex';
+    tbr.style.display = 'block';
     tb.textContent    = tv + 'S';
     tb.classList.toggle('warn', tv <= 5);
     tbf.style.width   = (tmax > 0 ? (tv / tmax * 100) : 0) + '%';
     tbf.classList.toggle('warn', tv <= 5);
-    document.getElementById('display-panel')?.classList.toggle('flash-warn', tv <= 5);
   } else {
     tbr.style.display = 'none';
     tbf.style.width   = '0%';
     tbf.classList.remove('warn');
     tb.classList.remove('warn');
-    document.getElementById('display-panel')?.classList.remove('flash-warn');
   }
 
   // Scoreboard — always rebuild with correct sort + colors
@@ -2476,9 +2513,13 @@ function renderDisplay(data) {
     const hidden = data.scoresHidden === true;
     // When hidden: keep ORIGINAL order (don't reveal ranking by sorting)
     const display = hidden ? [...teams] : sorted;
+    // Track previous scores for animation
+    if (!window._prevScores) window._prevScores = {};
     sb.innerHTML = display.map(t => {
       const isLead = !hidden && t.score === mx && t.score > 0;
-      return `<div class="dp-sbc ${isLead ? 'lead' : ''}"
+      const scoreChanged = window._prevScores[t.name] !== undefined && window._prevScores[t.name] !== t.score;
+      window._prevScores[t.name] = t.score;
+      return `<div class="dp-sbc ${isLead ? 'lead' : ''}${scoreChanged ? ' score-pop' : ''}"
         style="background:${isLead ? 'rgba(255,215,0,0.12)' : t.color+'22'};border-color:${isLead ? 'rgba(255,215,0,0.6)' : t.color+'66'}">
         ${t.avatar ? `<img src="${t.avatar}" style="width:56px;height:56px;border-radius:10px;object-fit:cover;display:block;margin:0 auto 6px">` : `<div style="width:56px;height:56px;border-radius:10px;background:${t.color}44;display:flex;align-items:center;justify-content:center;margin:0 auto 6px;font-size:28px">⚽</div>`}
         <div class="dp-sc-name" style="color:${isLead ? 'rgba(255,215,0,0.9)' : 'rgba(255,255,255,0.8)'};font-size:12px;letter-spacing:0.5px">${esc(t.name)}</div>
@@ -2593,57 +2634,80 @@ function buildDpQuestion(q, revealed, data) {
 
 function renderDpPodium(teams) {
   if (!teams || !teams.length) return;
-  const sorted = [...teams].sort((a, b) => b.score - a.score);
   document.getElementById('dp-sbw').style.display = 'none';
-
-  const medals  = ['🥇','🥈','🥉'];
-  const heights = { 1: '140px', 2: '100px', 3: '70px' };
-  const sizes   = { 1: 'clamp(22px,3vw,36px)', 2: 'clamp(18px,2.5vw,28px)', 3: 'clamp(15px,2vw,22px)' };
-
-  // Stage layout: 2nd | 1st | 3rd
-  const arr = [];
-  if (sorted[1]) arr.push({ ...sorted[1], place: 2 });
-  if (sorted[0]) arr.push({ ...sorted[0], place: 1 });
-  if (sorted[2]) arr.push({ ...sorted[2], place: 3 });
-
-  // Animations: 3rd → 2nd → 1st (same as admin podium)
-  const anims = { 1: '1.5s', 2: '1s', 3: '0.5s' };
-
   launchConfetti();
+
+  const sorted = [...teams].sort((a, b) => b.score - a.score);
+  // Assign places with tie support
+  let place = 1;
+  sorted.forEach((t, i) => {
+    if (i > 0 && t.score < sorted[i-1].score) place = i + 1;
+    t.place = place;
+  });
+
+  const podium3 = sorted.filter(t => t.place <= 3);
+  const rest    = sorted.filter(t => t.place > 3);
+  const place1  = podium3.filter(t => t.place === 1);
+  const place2  = podium3.filter(t => t.place === 2);
+  const place3  = podium3.filter(t => t.place === 3);
+  const podArr  = [...place2, ...place1, ...place3];
+
+  const imgSize   = p => p===1 ? 'min(130px,13vw)' : p===2 ? 'min(95px,9.5vw)' : 'min(75px,7.5vw)';
+  const barH      = p => p===1 ? 'min(150px,13vh)' : p===2 ? 'min(100px,9vh)' : 'min(65px,6vh)';
+  const nameSize  = p => p===1 ? 'clamp(20px,3vw,38px)' : p===2 ? 'clamp(16px,2.2vw,28px)' : 'clamp(13px,1.8vw,22px)';
+  const scoreSize = p => p===1 ? 'clamp(28px,4.5vw,58px)' : 'clamp(18px,3vw,36px)';
+  const delay     = p => p===1 ? 1.4 : p===2 ? 0.9 : 0.4;
+  const medal     = p => p===1 ? '🥇' : p===2 ? '🥈' : '🥉';
+
   document.getElementById('dp-main').innerHTML = `
-    <div style="font-family:'Bebas Neue',sans-serif;font-size:clamp(30px,4vw,56px);letter-spacing:6px;background:linear-gradient(90deg,#FFD700,#FFA500);-webkit-background-clip:text;-webkit-text-fill-color:transparent">
-      🏆 SLUTRESULTAT
+    <div style="font-family:'Bebas Neue',sans-serif;letter-spacing:6px;text-align:center;
+      background:linear-gradient(90deg,#FFD700,#FFA500,#FFD700);
+      -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+      font-size:clamp(36px,5.5vw,72px);line-height:1;margin-bottom:4px">
+      🏆 SLUTRESULTAT 🏆
     </div>
-    <div style="display:flex;align-items:flex-end;justify-content:center;gap:16px;">
-      ${arr.map(t => `
-        <div style="display:flex;flex-direction:column;align-items:center;gap:6px;
-                    opacity:0;transform:translateY(50px);
-                    animation:dpPodIn 0.5s cubic-bezier(.34,1.56,.64,1) ${anims[t.place]} forwards;
-                    ${t.place===1 ? 'animation:dpPodIn 0.5s cubic-bezier(.34,1.56,.64,1) '+anims[t.place]+' forwards, dpPulse 2s ease 2.5s infinite;' : ''}">
-          <div style="font-size:${t.place===1?'40px':'28px'}">${medals[t.place - 1]}</div>
-          <div style="width:${t.place===1?'110px':'80px'};height:${t.place===1?'110px':'80px'};border-radius:14px;overflow:hidden;border:3px solid ${t.color};background:${t.color}33;display:flex;align-items:center;justify-content:center;box-shadow:0 0 24px ${t.color}55">
-            ${t.avatar ? `<img src="${t.avatar}" style="width:100%;height:100%;object-fit:cover">` : '<span style="font-size:40px">⚽</span>'}
+
+    <div style="display:flex;align-items:flex-end;justify-content:center;gap:clamp(8px,2vw,28px);flex-wrap:wrap">
+      ${podArr.map(t => `
+        <div style="display:flex;flex-direction:column;align-items:center;gap:clamp(4px,0.8vh,8px);
+          opacity:0;transform:translateY(60px);
+          animation:dpPodIn 0.6s cubic-bezier(.34,1.56,.64,1) ${delay(t.place)}s forwards${t.place===1 ? ', dpPulse 2.5s ease 2.5s infinite' : ''}">
+          <div style="font-size:clamp(22px,3.5vw,42px)">${medal(t.place)}</div>
+          <div style="width:${imgSize(t.place)};height:${imgSize(t.place)};border-radius:16px;overflow:hidden;
+            border:${t.place===1?'4px':'3px'} solid ${t.color};
+            box-shadow:0 0 ${t.place===1?'40px':'20px'} ${t.color}66${t.place===1?',0 0 80px '+t.color+'33':''};
+            display:flex;align-items:center;justify-content:center">
+            ${t.avatar ? `<img src="${t.avatar}" style="width:100%;height:100%;object-fit:cover">` : `<span style="font-size:clamp(28px,4vw,50px)">⚽</span>`}
           </div>
-          <div style="font-family:'Bebas Neue',sans-serif;font-size:${sizes[t.place]};letter-spacing:2px;color:${t.color};text-align:center;${t.place===1?'text-shadow:0 0 30px '+t.color+';':''}">${esc(t.name)}</div>
-          <div style="font-family:'Bebas Neue',sans-serif;font-size:${t.place===1?'clamp(28px,4vw,52px)':'clamp(20px,3vw,36px)'};color:${t.color};letter-spacing:2px;${t.place===1?'text-shadow:0 0 20px '+t.color+';':''}">${t.score}<span style="font-size:0.5em;opacity:0.7"> P</span></div>
-          <div style="height:${heights[t.place]};width:${t.place === 1 ? '190px' : '150px'};display:flex;align-items:center;justify-content:center;
-                      border:${t.place===1?'3px':'2px'} solid ${t.color};font-family:'Bebas Neue',sans-serif;font-size:${t.place === 1 ? '72px' : '48px'};color:${t.color};
-                      background:${t.place === 1 ? 'rgba(255,215,0,0.06)' : 'rgba(255,255,255,0.02)'};
-                      box-shadow:${t.place === 1 ? '0 0 40px rgba(255,215,0,0.25),0 0 80px rgba(255,215,0,0.1)' : 'none'}">${t.place}</div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:${nameSize(t.place)};letter-spacing:2px;color:#fff;text-align:center;
+            ${t.place===1?'filter:drop-shadow(0 0 16px rgba(255,215,0,0.8));':''}">${esc(t.name)}</div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:${scoreSize(t.place)};color:${t.color};letter-spacing:2px;
+            ${t.place===1?'text-shadow:0 0 20px '+t.color+';':''}">${t.score}<span style="font-size:0.45em;opacity:0.6"> P</span></div>
+          <div style="width:${imgSize(t.place)};height:${barH(t.place)};
+            border:${t.place===1?'3px':'2px'} solid ${t.color};
+            background:linear-gradient(to top,${t.color}55,${t.color}11);
+            box-shadow:${t.place===1?'0 0 30px '+t.color+'55':'none'};
+            display:flex;align-items:center;justify-content:center;
+            font-family:'Bebas Neue',sans-serif;font-size:clamp(28px,5vw,64px);color:${t.color};
+            border-radius:4px 4px 0 0">${t.place}</div>
         </div>`).join('')}
     </div>
-    ${sorted.slice(3).map((t, i) => `
-      <div style="display:flex;align-items:center;gap:14px;padding:8px 18px;
-                  background:var(--bg2);border:1px solid var(--border2);border-left:3px solid ${t.color};min-width:280px;
-                  animation:dpPodIn 0.4s ease ${2 + i * 0.15}s both">
-        <span style="font-size:13px;font-weight:800;color:var(--text3)">#${i + 4}</span>
-        ${t.avatar ? `<img src="${t.avatar}" style="width:32px;height:32px;border-radius:8px;object-fit:cover;border:2px solid ${t.color}">` : ''}
-        <span style="flex:1;font-family:'Bebas Neue',sans-serif;font-size:22px;color:${t.color}">${esc(t.name)}</span>
-        <span style="font-family:'Bebas Neue',sans-serif;font-size:24px;color:${t.color}">${t.score} P</span>
-      </div>`).join('')}
+
+    ${rest.length ? `<div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:8px;max-width:900px">
+      ${rest.map(t => `
+        <div style="display:flex;align-items:center;gap:10px;padding:8px 16px;
+          background:${t.color}18;border:1px solid ${t.color}44;border-radius:10px;
+          opacity:0;animation:dpPodIn 0.4s ease 2.2s both">
+          <span style="font-family:'Bebas Neue',sans-serif;font-size:16px;color:var(--text3)">#${t.place}</span>
+          ${t.avatar ? `<img src="${t.avatar}" style="width:36px;height:36px;border-radius:8px;object-fit:cover">` : ''}
+          <span style="font-family:'Bebas Neue',sans-serif;font-size:20px;color:${t.color}">${esc(t.name)}</span>
+          <span style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:#fff">${t.score}&nbsp;P</span>
+        </div>`).join('')}
+    </div>` : ''}
+
     <style>
-      @keyframes dpPodIn { from{opacity:0;transform:translateY(50px)} to{opacity:1;transform:translateY(0)} }
-      @keyframes dpPulse { 0%,100%{filter:brightness(1) drop-shadow(0 0 0px transparent)} 50%{filter:brightness(1.3) drop-shadow(0 0 20px gold)} }
+      @keyframes dpPodIn { from{opacity:0;transform:translateY(60px) scale(0.9)} to{opacity:1;transform:translateY(0) scale(1)} }
+      @keyframes dpPulse { 0%,100%{filter:brightness(1)} 50%{filter:brightness(1.3) drop-shadow(0 0 30px gold)} }
     </style>`;
 }
 
@@ -2700,6 +2764,17 @@ function launchConfetti() {
     else canvas.remove();
   }
   draw();
+}
+
+/* ============================================================
+   FULLSCREEN
+============================================================ */
+function toggleFS() {
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen().catch(() => {});
+  } else {
+    document.exitFullscreen();
+  }
 }
 
 /* ============================================================
