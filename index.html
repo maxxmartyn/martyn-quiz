@@ -2364,7 +2364,6 @@ function showPodium() {
   if (topScore > 0) {
     sorted.filter(t => t.score === topScore && t.avatar).forEach(t => addWin(t.avatar));
   }
-  const sorted = [...liveState.teams].sort((a, b) => b.score - a.score);
   const stage = document.getElementById('pod-stage');
   const rest  = document.getElementById('pod-rest');
 
