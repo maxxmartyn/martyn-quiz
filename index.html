@@ -2201,7 +2201,7 @@ function renderLiveQ() {
   const { quiz, qi } = liveState;
   const qn = quiz.questions[qi];
   liveState.revealed = false;
-  renderSE(); // always refresh score entry so team names are visible
+  renderScEnt(); // always refresh score entry so team names are visible
 
   // Find current round boundaries for per-round question counter
   const qs = quiz.questions;
