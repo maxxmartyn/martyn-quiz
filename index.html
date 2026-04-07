@@ -957,7 +957,7 @@ select option { background: var(--bg2); }
 
 /* ── Background: rich dark purple-navy gradient ── */
 #display-panel {
-  display: none; min-height: 100vh; flex-direction: column;
+  display: none; height: 100dvh; max-height: 100dvh; flex-direction: column;
   background: linear-gradient(160deg, #1a0533 0%, #0d1b4b 50%, #0a0f2e 100%);
   overflow: hidden; position: relative;
 }
@@ -1007,22 +1007,23 @@ select option { background: var(--bg2); }
   display: none;
   justify-content: center;
   align-items: center;
-  padding: 6px 0 2px;
+  padding: 2px 0;
   flex-shrink: 0;
   position: relative;
   z-index: 10;
 }
 .dp-timer-big {
   font-family: 'Bebas Neue', sans-serif;
-  font-size: clamp(60px, 10vw, 120px);
+  font-size: clamp(36px, 6vh, 80px);
   color: var(--green);
   letter-spacing: 4px;
   background: rgba(0,230,118,0.08);
-  border: 3px solid rgba(0,230,118,0.4);
-  border-radius: 16px;
-  padding: 6px 40px;
-  min-width: 160px;
+  border: 2px solid rgba(0,230,118,0.4);
+  border-radius: 12px;
+  padding: 2px 28px;
+  min-width: 120px;
   text-align: center;
+  line-height: 1.2;
   transition: color 0.3s, background 0.3s, border-color 0.3s;
 }
 .dp-timer-big.warn {
@@ -1035,16 +1036,17 @@ select option { background: var(--bg2); }
 
 /* ── Scoreboard ── */
 .dp-sb-wrap {
-  display: none; padding: 10px 24px 0;
+  display: none; padding: 6px 16px 0;
   flex-shrink: 0; position: relative; z-index: 2;
+  max-height: 22vh; overflow: hidden;
 }
 .dp-sb { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
 .dp-sbc {
-  width: 100px;
+  width: clamp(80px,9vw,115px);
   flex-shrink: 0;
   flex-grow: 0;
   text-align: center;
-  padding: 10px 6px;
+  padding: 6px 4px;
   border-radius: 12px;
   border: 2px solid transparent;
   transition: transform 0.3s, box-shadow 0.3s;
@@ -1075,7 +1077,7 @@ select option { background: var(--bg2); }
   flex: 1;
   overflow: hidden; display: flex; flex-direction: column;
   align-items: center; justify-content: center;
-  padding: 8px 40px; gap: 8px;
+  padding: 4px 32px; gap: 6px;
   overflow: hidden; position: relative; z-index: 1; min-height: 0;
 }
 @keyframes qSlideIn {
@@ -1111,7 +1113,7 @@ select option { background: var(--bg2); }
 
 /* ── Image ── */
 .dp-q-img {
-  max-height: min(42vh, 400px); max-width: 90%;
+  max-height: min(28vh, 300px); max-width: 88%;
   object-fit: contain; border-radius: 14px;
   box-shadow: 0 12px 48px rgba(0,0,0,0.6);
   display: block; flex-shrink: 1;
@@ -2002,6 +2004,12 @@ function selLQ(id) {
   lSelId = id;
   document.querySelectorAll('.qsi').forEach(el => el.classList.remove('sel'));
   document.getElementById('qsi_' + id)?.classList.add('sel');
+  // Load previously saved teams for this quiz
+  const q = getQ(id);
+  if (q && q.savedTeams && q.savedTeams.length) {
+    lTeams = q.savedTeams.map(t => ({ ...t }));
+    renderTeams();
+  }
 }
 
 // ── Team Profiles (stored in Firebase) ────────────────────
@@ -2143,6 +2151,7 @@ function startLive() {
   const qForSave = getQ(lSelId);
   if (qForSave) {
     qForSave.savedTeams = lTeams.map(t => ({ ...t }));
+    saveQuizzes(); // persist to Firebase so teams survive page reload
   }
   liveState = {
     quiz,
@@ -2192,6 +2201,7 @@ function renderLiveQ() {
   const { quiz, qi } = liveState;
   const qn = quiz.questions[qi];
   liveState.revealed = false;
+  renderSE(); // always refresh score entry so team names are visible
 
   // Find current round boundaries for per-round question counter
   const qs = quiz.questions;
@@ -2453,6 +2463,7 @@ function buildPayload() {
       answer: qn.answer || ''
     },
     revealed, tv, tmax, tr,
+    timer: { tv, tmax, tr },
     currentRound: liveState.currentRound || '',
     scoresHidden: scoresHidden || false,
     teams: teams.map(t => ({ name: t.name, score: t.score, color: t.color, avatar: t.avatar||'' })),
@@ -2465,21 +2476,17 @@ function syncDisp(override) {
   fbWrite(FB_DISP, p);
 }
 
-// Timer-only update (avoids triggering question DOM rebuild on display screen)
+// Timer-only update — single write to avoid multiple onValue triggers
 let _timerBuf = null;
 function syncDispTimer() {
   if (!liveState) return;
   clearTimeout(_timerBuf);
   _timerBuf = setTimeout(async () => {
     try {
+      // Write as single object → only one onValue callback on display
       await window._set(
-        window._ref(window._db, FB_DISP + '/tv'), liveState.tv
-      );
-      await window._set(
-        window._ref(window._db, FB_DISP + '/tr'), liveState.tr
-      );
-      await window._set(
-        window._ref(window._db, FB_DISP + '/tmax'), liveState.tmax
+        window._ref(window._db, FB_DISP + '/timer'),
+        { tv: liveState.tv, tr: liveState.tr, tmax: liveState.tmax }
       );
     } catch(e) { /* fallback: nothing */ }
   }, 200);
@@ -2569,7 +2576,11 @@ function renderDisplay(data) {
   }
   if (data.state !== 'live')   return;
 
-  const { q, revealed, tv, tmax, tr, teams } = data;
+  const { q, revealed, teams } = data;
+  // Timer may come from top-level (full sync) or nested /timer object (timer-only sync)
+  const tv   = data.timer?.tv   ?? data.tv   ?? 0;
+  const tmax = data.timer?.tmax ?? data.tmax ?? 30;
+  const tr   = data.timer?.tr   ?? data.tr   ?? false;
   // Force question rebuild when coming from intro/standby or when forceRender is set
   if (_prevState !== 'live' || data.forceRender !== _prevForce) {
     _prevQi = -1; _prevRev = false;
@@ -2626,8 +2637,8 @@ function renderDisplay(data) {
       window._prevScores[t.name] = t.score;
       return `<div class="dp-sbc ${isLead ? 'lead' : ''}${scoreChanged ? ' score-pop' : ''}"
         style="background:${isLead ? 'rgba(255,215,0,0.12)' : t.color+'22'};border-color:${isLead ? 'rgba(255,215,0,0.6)' : t.color+'66'}">
-        ${t.avatar ? `<img src="${t.avatar}" style="width:56px;height:56px;border-radius:10px;object-fit:cover;display:block;margin:0 auto 6px">` : `<div style="width:56px;height:56px;border-radius:10px;background:${t.color}44;display:flex;align-items:center;justify-content:center;margin:0 auto 6px;font-size:28px">⚽</div>`}
-        <div class="dp-sc-name" style="color:${isLead ? 'rgba(255,215,0,0.9)' : 'rgba(255,255,255,0.8)'};font-size:11px;letter-spacing:0.3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:88px">${esc(t.name.length>10?t.name.slice(0,9)+'…':t.name)}</div>
+        ${t.avatar ? `<img src="${t.avatar}" style="width:clamp(36px,4.5vh,56px);height:clamp(36px,4.5vh,56px);border-radius:10px;object-fit:cover;display:block;margin:0 auto 4px">` : `<div style="width:clamp(36px,4.5vh,56px);height:clamp(36px,4.5vh,56px);border-radius:10px;background:${t.color}44;display:flex;align-items:center;justify-content:center;margin:0 auto 6px;font-size:28px">⚽</div>`}
+        <div class="dp-sc-name" style="color:${isLead ? 'rgba(255,215,0,0.9)' : 'rgba(255,255,255,0.8)'};font-size:11px;letter-spacing:0.3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:88px">${esc(t.name)}</div>
         <div class="dp-sc-score" style="color:${isLead ? '#FFD700' : '#fff'}">${hidden ? '?' : t.score}</div>
       </div>`;
     }).join('');
