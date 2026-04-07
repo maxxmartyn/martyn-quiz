@@ -344,6 +344,22 @@ select option { background: var(--bg2); }
   margin-left: auto;
   flex-shrink: 0;
 }
+#sync-status {
+  display: none;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  padding: 5px 12px;
+  border-radius: 20px;
+  align-self: center;
+  flex-shrink: 0;
+  transition: all 0.3s;
+}
+#sync-status.ok  { background: rgba(0,230,118,0.1); color: var(--green); border: 1px solid rgba(0,230,118,0.3); }
+#sync-status.err { background: rgba(239,68,68,0.15); color: #f87171; border: 1px solid rgba(239,68,68,0.4); animation: syncPulse 1s ease infinite; }
+@keyframes syncPulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
 .live-badge .dot {
   width: 7px; height: 7px; border-radius: 50%;
   background: var(--green);
@@ -1230,6 +1246,7 @@ select option { background: var(--bg2); }
     <div style="display:flex;align-items:center;gap:10px;margin-left:auto">
       <button class="btn btn-outline-green btn-sm" onclick="openDisplay()" title="Öppna storskärm i ny flik">📺 Storskärm</button>
       <div class="live-badge" id="lbadge"><span class="dot"></span>LIVE</div>
+      <div id="sync-status" class="ok">● SYNKAD</div>
     </div>
   </div>
 
@@ -1375,7 +1392,7 @@ select option { background: var(--bg2); }
   </div>
   <div class="dp-main" id="dp-main">
     <div class="dp-wait-logo" style="text-align:center">THE MARTYN<br>SHOW</div>
-    <div class="dp-wait-sub" style="margin-top:12px">QUIZ STARTAR SNART ✦</div>
+    <div class="dp-wait-sub" style="margin-top:12px" id="dp-wait-sub">ANSLUTER...</div>
   </div>
 </div>
 
@@ -1413,8 +1430,28 @@ function fbListen(path, cb) {
 async function fbWrite(path, data) {
   try {
     await window._set(window._ref(window._db, path), data);
-    showConn(true);
-  } catch(e) { showConn(false); console.warn('Firebase write failed', e); }
+    setSyncStatus(true);
+  } catch(e) {
+    console.warn('Firebase write failed, retrying...', e);
+    setSyncStatus(false);
+    // Retry once after 1 second
+    setTimeout(async () => {
+      try {
+        await window._set(window._ref(window._db, path), data);
+        setSyncStatus(true);
+      } catch(e2) {
+        setSyncStatus(false);
+        console.error('Firebase retry also failed', e2);
+      }
+    }, 1000);
+  }
+}
+
+function setSyncStatus(ok) {
+  const el = document.getElementById('sync-status');
+  if (!el || el.style.display === 'none') return;
+  el.className = ok ? 'ok' : 'err';
+  el.textContent = ok ? '● SYNKAD' : '⚠ SYNKFEL — försöker igen';
 }
 
 function whenReady(cb) {
@@ -1446,7 +1483,8 @@ function loadLocal() {
 
 async function saveQuizzes() {
   _fbIgnoreNext = true;
-  await fbWrite(FB_QUIZ, { data: JSON.stringify(quizzes) });
+  const payload = { data: JSON.stringify(quizzes), savedAt: Date.now() };
+  await fbWrite(FB_QUIZ, payload);
 }
 
 function sanitizeQuiz(q) {
@@ -2162,6 +2200,8 @@ function startLive() {
   document.getElementById('live-setup').style.display = 'none';
   document.getElementById('live-view').classList.add('active');
   document.getElementById('lbadge').style.display = 'flex';
+  const ss = document.getElementById('sync-status');
+  if (ss) { ss.style.display = 'flex'; ss.className = 'ok'; ss.textContent = '● SYNKAD'; }
   renderLiveQ();
   // First: show team intro screen on display, then go live after admin clicks "Starta"
   syncDisp({ state: 'intro', teams: liveState.teams.map(t=>({...t})), ts: Date.now() });
@@ -2180,6 +2220,8 @@ function endLive() {
   document.getElementById('live-setup').style.display = 'block';
   document.getElementById('live-view').classList.remove('active');
   document.getElementById('lbadge').style.display = 'none';
+  const ssE = document.getElementById('sync-status');
+  if (ssE) ssE.style.display = 'none';
   // Restore startShowBtn for next time
   const ssb = document.getElementById('startShowBtn');
   if (ssb) ssb.style.display = '';
@@ -2488,7 +2530,7 @@ function syncDispTimer() {
         window._ref(window._db, FB_DISP + '/timer'),
         { tv: liveState.tv, tr: liveState.tr, tmax: liveState.tmax }
       );
-    } catch(e) { /* fallback: nothing */ }
+    } catch(e) { setSyncStatus(false); }
   }, 200);
 }
 
@@ -2501,7 +2543,7 @@ function syncDispScore() {
       window._ref(window._db, FB_DISP + '/teams'),
       liveState.teams.map(t => ({ name: t.name, score: t.score, color: t.color, avatar: t.avatar||'' }))
     );
-  } catch(e) { /* fallback */ }
+  } catch(e) { setSyncStatus(false); }
 }
 
 /* ============================================================
@@ -2514,10 +2556,40 @@ let _prevRev = false;
 let _prevState = '';
 let _prevForce = 0;
 
+let _lastDataTs = 0;
+let _connWatchdog = null;
+
 function startDisplayListener() {
   fbListen(FB_DISP, data => {
+    _lastDataTs = Date.now();
+    hideConnWarn();
     if (data) renderDisplay(data);
   });
+  // Watchdog: if no data for 8s while visible, show warning
+  _connWatchdog = setInterval(() => {
+    const panel = document.getElementById('display-panel');
+    if (!panel || !panel.classList.contains('active')) return;
+    if (_lastDataTs > 0 && Date.now() - _lastDataTs > 8000) {
+      showConnWarn();
+    }
+  }, 2000);
+}
+
+function showConnWarn() {
+  let w = document.getElementById('dp-connwarn');
+  if (w) return;
+  w = document.createElement('div');
+  w.id = 'dp-connwarn';
+  w.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:999;background:rgba(239,68,68,0.9);color:#fff;text-align:center;padding:8px;font-family:Bebas Neue,sans-serif;font-size:18px;letter-spacing:2px;animation:syncPulse 1s ease infinite';
+  w.textContent = '⚠ ANSLUTNINGEN TILL FIREBASE ÄR BORTA — KONTROLLERA NÄTVERK';
+  document.body.appendChild(w);
+}
+
+function hideConnWarn() {
+  const w = document.getElementById('dp-connwarn');
+  if (w) w.remove();
+  const ws = document.getElementById('dp-wait-sub');
+  if (ws) ws.textContent = 'QUIZ STARTAR SNART ✦';
 }
 
 function renderDisplay(data) {
