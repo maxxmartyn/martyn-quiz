@@ -29,11 +29,11 @@ const CL_CLOUD  = 'dw3xnne9q';
 const CL_PRESET = 'max_martyn_party';
 const CL_URL    = `https://api.cloudinary.com/v1_1/${CL_CLOUD}/image/upload`;
 
-async function uploadToCloudinary(file) {
+async function uploadToCloudinary(file, folder) {
   const fd = new FormData();
   fd.append('file', file);
   fd.append('upload_preset', CL_PRESET);
-  fd.append('folder', 'quizmaster');
+  fd.append('folder', folder || 'quizmaster/misc');
   const r = await fetch(CL_URL, { method: 'POST', body: fd });
   const d = await r.json();
   if (d.secure_url) return d.secure_url;
@@ -1395,7 +1395,7 @@ select option { background: var(--bg2); }
 ============================================================ */
 const FB_DISP  = 'quizmaster/display';
 const FB_QUIZ  = 'quizmaster/quizzes';
-const LS_KEY   = 'qm_quizzes_v3';   // localStorage backup
+const FB_PROF  = 'quizmaster/profiles';
 
 function fbReady() { return !!window._fbOK; }
 
@@ -1436,21 +1436,14 @@ const COLORS = ['#00FF88','#00DDFF','#FFE600','#FF6B35','#FF3B3B','#c084fc','#60
 
 /* ============================================================
    QUIZ PERSISTENCE
-   - Primary: Firebase realtime database
-   - Backup:  localStorage (works offline, loaded on start)
+   - Source: Firebase realtime database (single source of truth)
 ============================================================ */
 function loadLocal() {
-  try {
-    const r = localStorage.getItem(LS_KEY);
-    if (r) quizzes = JSON.parse(r);
-    else quizzes = [];
-  } catch(e) { quizzes = []; }
+  quizzes = []; // Firebase is the only source — nothing to load locally
 }
 
 async function saveQuizzes() {
-  localStorage.setItem(LS_KEY, JSON.stringify(quizzes));
   _fbIgnoreNext = true;
-  // Store as a single JSON string — Firebase can never corrupt array structure this way
   await fbWrite(FB_QUIZ, { data: JSON.stringify(quizzes) });
 }
 
@@ -1492,11 +1485,7 @@ function loadFromFirebase() {
       const parsed = JSON.parse(jsonStr);
       if (!Array.isArray(parsed)) return;
       // Only update if Firebase has more/newer data than local
-      quizzes = parsed.map(q => ({
-        ...q,
-        questions: Array.isArray(q.questions) ? q.questions : []
-      })).filter(q => q && q.id);
-      localStorage.setItem(LS_KEY, JSON.stringify(quizzes));
+      quizzes = parsed.map(q => sanitizeQuiz(q)).filter(Boolean);
       const builderVisible = document.getElementById('tab-builder').style.display !== 'none';
       if (!builderVisible) renderQuizList();
     } catch(e) {
@@ -1547,7 +1536,7 @@ function setMode(m) {
     document.getElementById('qm-panel').classList.add('active');
     loadLocal();
     renderQuizList();
-    whenReady(() => loadFromFirebase());
+    whenReady(() => { loadFromFirebase(); startProfileListener(); });
   } else {
     document.getElementById('display-panel').classList.add('active');
     whenReady(() => startDisplayListener());
@@ -1653,7 +1642,6 @@ function saveQMeta() {
   const q = getQ(editId);
   q.name = document.getElementById('qname').value || 'Namnlöst Quiz';
   q.updated = Date.now();
-  localStorage.setItem(LS_KEY, JSON.stringify(quizzes));
 }
 
 async function saveAndGoToQuizzes() {
@@ -1810,7 +1798,6 @@ function updTF(i, val, el, cls) {
   const q = getQ(editId);
   q.questions[i].correct = val;
   q.updated = Date.now();
-  localStorage.setItem(LS_KEY, JSON.stringify(quizzes));
   const body = document.getElementById('qb_' + i);
   if (body) {
     body.querySelectorAll('.tfopt').forEach(o => o.classList.remove('sT', 'sF'));
@@ -1866,7 +1853,6 @@ function addQ() {
   const q = getQ(editId);
   q.questions.push({ id: 'qn_' + Date.now(), type: 'mc', text: '', options: ['','','',''], correct: [0], image: null, answer: '' });
   q.updated = Date.now();
-  localStorage.setItem(LS_KEY, JSON.stringify(quizzes));
   renderQs();
   const idx = q.questions.length - 1;
   setTimeout(() => {
@@ -1880,7 +1866,6 @@ function remQ(i) {
   const q = getQ(editId);
   q.questions.splice(i, 1);
   q.updated = Date.now();
-  localStorage.setItem(LS_KEY, JSON.stringify(quizzes));
   renderQs();
 }
 
@@ -1890,7 +1875,6 @@ function moveQ(i, d) {
   if (ni < 0 || ni >= q.questions.length) return;
   [q.questions[i], q.questions[ni]] = [q.questions[ni], q.questions[i]];
   q.updated = Date.now();
-  localStorage.setItem(LS_KEY, JSON.stringify(quizzes));
   renderQs();
 }
 
@@ -1898,7 +1882,6 @@ function updQ(i, f, v) {
   const q = getQ(editId);
   q.questions[i][f] = v;
   q.updated = Date.now();
-  localStorage.setItem(LS_KEY, JSON.stringify(quizzes)); // local only, no Firebase
   if (f === 'text') {
     const p = document.getElementById('qprev_' + i);
     if (p) p.innerHTML = v || '';
@@ -1909,7 +1892,20 @@ function updOpt(i, oi, v) {
   const q = getQ(editId);
   q.questions[i].options[oi] = v;
   q.updated = Date.now();
-  localStorage.setItem(LS_KEY, JSON.stringify(quizzes));
+}
+
+function toggleCorrect(i, oi) {
+  const q = getQ(editId); if (!q) return;
+  const qn = q.questions[i];
+  let cur = toArr(qn.correct);
+  if (cur.includes(oi)) {
+    cur = cur.filter(x => x !== oi);
+    if (!cur.length) cur = [oi]; // always keep at least one
+  } else {
+    cur = [...cur, oi].sort((a,b) => a-b);
+  }
+  qn.correct = cur;
+  q.updated = Date.now();
 }
 
 function updType(i, t) {
@@ -1918,7 +1914,6 @@ function updType(i, t) {
   if (t === 'mc' && !q.questions[i].options) q.questions[i].options = ['','','',''];
   if (t === 'tf') q.questions[i].correct = true;
   q.updated = Date.now();
-  localStorage.setItem(LS_KEY, JSON.stringify(quizzes));
   renderQs();
   setTimeout(() => {
     document.getElementById('qb_' + i)?.classList.add('open');
@@ -1937,10 +1932,10 @@ async function upImg(e, i) {
   const iup = document.getElementById('qcard_' + i)?.querySelector('.iup');
   if (iup) iup.innerHTML = '<div class="iphl">⏳ Laddar upp bild...</div>';
   try {
-    const url = await uploadToCloudinary(f);
+    const quizName = (getQ(editId)?.name || 'quiz').replace(/[^a-zA-Z0-9åäöÅÄÖ]/g,'_').slice(0,30);
+    const url = await uploadToCloudinary(f, `quizmaster/${quizName}/questions`);
     const q2 = getQ(editId);
     if (q2) q2.questions[i].image = url;
-    localStorage.setItem(LS_KEY, JSON.stringify(quizzes));
     renderQs();
     setTimeout(() => {
       document.getElementById('qb_' + i)?.classList.add('open');
@@ -1958,7 +1953,6 @@ async function upImg(e, i) {
 
 function remImg(i) {
   const q3 = getQ(editId); if(q3) q3.questions[i].image = null;
-  localStorage.setItem(LS_KEY, JSON.stringify(quizzes));
   renderQs();
   setTimeout(() => {
     document.getElementById('qb_' + i)?.classList.add('open');
@@ -2010,6 +2004,100 @@ function selLQ(id) {
   document.getElementById('qsi_' + id)?.classList.add('sel');
 }
 
+// ── Team Profiles (stored in Firebase) ────────────────────
+let _profiles = []; // in-memory cache
+
+function loadProfiles() { return _profiles; }
+
+function saveProfiles(profiles) {
+  _profiles = profiles;
+  whenReady(() => fbWrite(FB_PROF, { data: JSON.stringify(profiles) }));
+}
+
+function startProfileListener() {
+  fbListen(FB_PROF, data => {
+    if (!data) return;
+    try {
+      const str = typeof data === 'object' && data.data ? data.data : null;
+      if (str) { _profiles = JSON.parse(str); renderTeams(); }
+    } catch(e) {}
+  });
+}
+
+function upsertProfile(name, avatar) {
+  const profiles = [..._profiles];
+  const existing = profiles.find(p => p.avatar === avatar);
+  if (existing) { existing.name = name; }
+  else { profiles.push({ id: 'p_' + Date.now(), name, avatar, wins: 0 }); }
+  saveProfiles(profiles);
+}
+function addWin(avatar) {
+  const profiles = [..._profiles];
+  const p = profiles.find(p => p.avatar === avatar);
+  if (p) { p.wins = (p.wins || 0) + 1; saveProfiles(profiles); }
+}
+function resetWins(id) {
+  const profiles = [..._profiles];
+  const p = profiles.find(p => p.id === id);
+  if (p) { p.wins = 0; saveProfiles(profiles); renderTeams(); }
+}
+function deleteProfile(id) {
+  saveProfiles(_profiles.filter(p => p.id !== id));
+  renderTeams();
+}
+function pickProfile(i, id) {
+  const p = _profiles.find(p => p.id === id);
+  if (!p) return;
+  lTeams[i].name = p.name;
+  lTeams[i].avatar = p.avatar;
+  renderTeams();
+}
+
+function renderProfilePicker(teamIdx) {
+  const profiles = loadProfiles();
+  if (!profiles.length) return '<div style="color:var(--text3);font-size:12px;padding:8px">Inga sparade profiler</div>';
+  return profiles.map(p => `
+    <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;cursor:pointer;border-radius:8px;background:var(--bg3);margin-bottom:4px"
+         onclick="pickProfile(${teamIdx},'${p.id}')">
+      <div style="width:36px;height:36px;border-radius:8px;overflow:hidden;flex-shrink:0;background:var(--border2);display:flex;align-items:center;justify-content:center">
+        ${p.avatar ? `<img src="${p.avatar}" style="width:100%;height:100%;object-fit:cover">` : '⚽'}
+      </div>
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:700;font-size:14px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.name)}</div>
+        <div style="font-size:11px;color:var(--text3)">🏆 ${p.wins || 0} vinster</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:2px">
+        <button onclick="event.stopPropagation();resetWins('${p.id}')" title="Nollställ vinster"
+          style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:11px;padding:1px 4px;white-space:nowrap">↺ 0</button>
+        <button onclick="event.stopPropagation();deleteProfile('${p.id}')"
+          style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;padding:1px 4px">✕</button>
+      </div>
+    </div>`).join('');
+}
+
+function toggleProfilePicker(i) {
+  const existing = document.getElementById('ppicker_' + i);
+  // Close all other pickers
+  document.querySelectorAll('[id^=ppicker_]').forEach(el => el.remove());
+  if (existing) return;
+  const trow = document.getElementById('trow_' + i);
+  if (!trow) return;
+  const picker = document.createElement('div');
+  picker.id = 'ppicker_' + i;
+  picker.style.cssText = 'background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:8px;margin-top:4px;max-height:200px;overflow-y:auto;grid-column:1/-1';
+  picker.innerHTML = '<div style="font-size:11px;font-weight:800;letter-spacing:2px;color:var(--text3);text-transform:uppercase;margin-bottom:6px">Välj profil</div>' + renderProfilePicker(i);
+  trow.insertAdjacentElement('afterend', picker);
+}
+
+function saveTeamAsProfile(i) {
+  const t = lTeams[i];
+  if (!t.name && !t.avatar) return;
+  upsertProfile(t.name, t.avatar);
+  // Show brief confirmation
+  const btn = document.getElementById('savepbtn_' + i);
+  if (btn) { btn.textContent = '✓'; btn.style.color = 'var(--green)'; setTimeout(() => { btn.textContent = '💾'; btn.style.color = ''; }, 1200); }
+}
+
 function renderTeams() {
   document.getElementById('tgrid').innerHTML = lTeams.map((t, i) => `
     <div class="trow" style="align-items:center;gap:8px">
@@ -2031,7 +2119,7 @@ async function upTeamAvatar(e, i) {
   const wrap = e.target.closest('.trow')?.querySelector('.t-avatar-wrap');
   if (wrap) wrap.innerHTML = '⏳';
   try {
-    const url = await uploadToCloudinary(f);
+    const url = await uploadToCloudinary(f, 'quizmaster/avatars');
     lTeams[i].avatar = url;
     renderTeams();
   } catch { alert('Bilduppladdning misslyckades'); renderTeams(); }
@@ -2055,7 +2143,6 @@ function startLive() {
   const qForSave = getQ(lSelId);
   if (qForSave) {
     qForSave.savedTeams = lTeams.map(t => ({ ...t }));
-    localStorage.setItem(LS_KEY, JSON.stringify(quizzes));
   }
   liveState = {
     quiz,
@@ -2271,6 +2358,12 @@ function renderSB() {
 ============================================================ */
 function showPodium() {
   if (!liveState) return;
+  // Award win to team in first place
+  const sorted = [...liveState.teams].sort((a,b) => b.score - a.score);
+  const topScore = sorted[0]?.score;
+  if (topScore > 0) {
+    sorted.filter(t => t.score === topScore && t.avatar).forEach(t => addWin(t.avatar));
+  }
   const sorted = [...liveState.teams].sort((a, b) => b.score - a.score);
   const stage = document.getElementById('pod-stage');
   const rest  = document.getElementById('pod-rest');
@@ -2357,7 +2450,7 @@ function buildPayload() {
       title: qn.title || '',
       options: qn.options || ['', '', '', ''],
       image: qn.image || null,
-      correct: Array.isArray(qn.correct) ? qn.correct : [qn.correct ?? 0],
+      correct: toArr(qn.correct),
       answer: qn.answer || ''
     },
     revealed, tv, tmax, tr,
