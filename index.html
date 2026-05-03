@@ -1560,7 +1560,7 @@ function fmtD(ts) { return ts ? new Date(ts).toLocaleDateString('sv-SE') : '—'
 /* ============================================================
    MODE SELECTION
 ============================================================ */
-const ADMIN_PIN = '1234'; // ← ändra detta!
+const ADMIN_PIN = 'yalla'; // ← ändra detta!
 
 function setMode(m) {
   if (m === 'qm') {
@@ -2506,6 +2506,7 @@ function buildPayload() {
     },
     revealed, tv, tmax, tr,
     timer: { tv, tmax, tr },
+    score: { scoresHidden: scoresHidden || false, teams: teams.map(t => ({ name: t.name, score: t.score, color: t.color, avatar: t.avatar||'' })) },
     currentRound: liveState.currentRound || '',
     scoresHidden: scoresHidden || false,
     teams: teams.map(t => ({ name: t.name, score: t.score, color: t.color, avatar: t.avatar||'' })),
@@ -2537,13 +2538,11 @@ function syncDispTimer() {
 // Score-only update
 function syncDispScore() {
   if (!liveState) return;
-  try {
-    window._set(window._ref(window._db, FB_DISP + '/scoresHidden'), scoresHidden);
-    window._set(
-      window._ref(window._db, FB_DISP + '/teams'),
-      liveState.teams.map(t => ({ name: t.name, score: t.score, color: t.color, avatar: t.avatar||'' }))
-    );
-  } catch(e) { setSyncStatus(false); }
+  // Single write to avoid double onValue trigger on display
+  fbWrite(FB_DISP + '/score', {
+    scoresHidden,
+    teams: liveState.teams.map(t => ({ name: t.name, score: t.score, color: t.color, avatar: t.avatar||'' }))
+  });
 }
 
 /* ============================================================
@@ -2648,7 +2647,7 @@ function renderDisplay(data) {
   }
   if (data.state !== 'live')   return;
 
-  const { q, revealed, teams } = data;
+  const { q, revealed } = data;
   // Timer may come from top-level (full sync) or nested /timer object (timer-only sync)
   const tv   = data.timer?.tv   ?? data.tv   ?? 0;
   const tmax = data.timer?.tmax ?? data.tmax ?? 30;
@@ -2691,7 +2690,9 @@ function renderDisplay(data) {
   // Scoreboard — always rebuild with correct sort + colors
   const sbw = document.getElementById('dp-sbw');
   const sb  = document.getElementById('dp-sb');
-  const teamsKey = teams ? JSON.stringify(teams.map(t=>t.score+t.name)) : '';
+  const _t = scoreTeams || data.teams;
+  const teamsKey = _t ? JSON.stringify(_t.map(t=>t.score+t.name)) : '';
+  const teams = scoreTeams || data.teams;
   if (teams && teams.length && teamsKey !== window._prevTeamsKey) {
     window._prevTeamsKey = teamsKey;
     sbw.style.display = 'block';
