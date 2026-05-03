@@ -1065,15 +1065,17 @@ select option { background: var(--bg2); }
   padding: 6px 4px;
   border-radius: 12px;
   border: 2px solid transparent;
-  transition: transform 0.3s, box-shadow 0.3s;
+  transition: all 0.3s;
   overflow: hidden;
+  position: relative;
 }
 .dp-sbc.lead {
-  border-color: rgba(255,215,0,0.6) !important;
-  background: rgba(255,215,0,0.12) !important;
-  box-shadow: 0 0 24px rgba(255,215,0,0.35), 0 0 48px rgba(255,215,0,0.12);
+  width: clamp(96px,11vw,138px);
+  padding: 10px 6px;
+  border-color: rgba(255,215,0,0.7) !important;
+  background: rgba(255,215,0,0.13) !important;
+  box-shadow: 0 0 28px rgba(255,215,0,0.4), 0 0 56px rgba(255,215,0,0.15);
   z-index: 2;
-  outline: 2px solid rgba(255,215,0,0.5);
 }
 .dp-sc-name {
   font-size: 10px; font-weight: 800; letter-spacing: 1px;
@@ -1084,7 +1086,8 @@ select option { background: var(--bg2); }
   font-family: 'Bebas Neue', sans-serif;
   font-size: 36px; color: #fff; line-height: 1;
 }
-.dp-sbc.lead .dp-sc-score { color: #FFD700; font-size: 44px; }
+.dp-sbc.lead .dp-sc-score { color: #FFD700; font-size: 48px; }
+.dp-sbc.lead img, .dp-sbc.lead .dp-av-fb { width: clamp(46px,5.5vh,68px) !important; height: clamp(46px,5.5vh,68px) !important; }
 @keyframes scorePop { 0%{transform:scale(1)} 30%{transform:scale(1.25);filter:brightness(1.5)} 100%{transform:scale(1)} }
 .dp-sbc.score-pop { animation: scorePop 0.5s cubic-bezier(.34,1.56,.64,1); }
 .dp-sbc.lead .dp-sc-name  { color: rgba(255,215,0,0.8); }
@@ -2148,6 +2151,17 @@ function saveTeamAsProfile(i) {
   if (btn) { btn.textContent = '✓'; btn.style.color = 'var(--green)'; setTimeout(() => { btn.textContent = '💾'; btn.style.color = ''; }, 1200); }
 }
 
+function setTeamColor(i, val) {
+  const dup = lTeams.findIndex((t, j) => j !== i && t.color.toLowerCase() === val.toLowerCase());
+  if (dup !== -1) {
+    // Auto-shift hue to avoid duplicate
+    const h = parseInt(val.slice(1), 16);
+    val = '#' + ((h + 0x202020) % 0xFFFFFF).toString(16).padStart(6,'0');
+  }
+  lTeams[i].color = val;
+  renderTeams();
+}
+
 function renderTeams() {
   document.getElementById('tgrid').innerHTML = lTeams.map((t, i) => `
     <div class="trow" style="align-items:center;gap:8px">
@@ -2157,7 +2171,7 @@ function renderTeams() {
         ${t.avatar ? `<img src="${t.avatar}" style="width:100%;height:100%;object-fit:cover">` : '📷'}
       </div>
       <input type="file" accept="image/*" id="tavfile_${i}" style="display:none" onchange="upTeamAvatar(event,${i})">
-      <input type="color" value="${t.color}" oninput="lTeams[${i}].color=this.value;renderTeams()"
+      <input type="color" value="${t.color}" oninput="setTeamColor(${i},this.value)"
         style="width:30px;height:30px;border:none;background:transparent;cursor:pointer;padding:0;flex-shrink:0">
       <input type="text" value="${esc(t.name)}" placeholder="Lagnamn" maxlength="14" oninput="lTeams[${i}].name=this.value.slice(0,14)" style="flex:1">
       <button class="btn btn-danger btn-sm" onclick="remTeam(${i})" style="padding:4px 10px">×</button>
@@ -2397,10 +2411,9 @@ function renderScEnt() {
     .sort((a, b) => b.score - a.score);
   const medals = ['🥇','🥈','🥉'];
   document.getElementById('score-entry').innerHTML = ranked.map((t, rank) => `
-    <div class="scrow" style="border-left:3px solid ${t.color};background:${t.color}0d">
-      <div style="font-size:18px;min-width:28px">${medals[rank] || '#'+(rank+1)}</div>
-      <div class="scdot" style="background:${t.color}"></div>
-      <div class="scname" style="font-size:16px;font-weight:800;color:#fff">${esc(t.name)}</div>
+    <div class="scrow" style="border-left:4px solid ${t.color};background:${t.color}15">
+      <div style="width:14px;height:14px;border-radius:50%;background:${t.color};flex-shrink:0;box-shadow:0 0 8px ${t.color}"></div>
+      <div class="scname" style="font-size:15px;font-weight:800;color:#fff">${esc(t.name)}</div>
       <div class="sctot" id="stot_${t.origIdx}">${t.score}</div>
       <div class="sciw">
         <button class="scb m" onclick="apSc(${t.origIdx},-1)">−</button>
@@ -2743,7 +2756,9 @@ function renderDisplay(data) {
       window._prevScores[t.name] = t.score;
       return `<div class="dp-sbc ${isLead ? 'lead' : ''}${scoreChanged ? ' score-pop' : ''}"
         style="background:${isLead ? 'rgba(255,215,0,0.12)' : t.color+'22'};border-color:${isLead ? 'rgba(255,215,0,0.6)' : t.color+'66'}">
-        ${t.avatar ? `<img src="${t.avatar}" style="width:clamp(36px,4.5vh,56px);height:clamp(36px,4.5vh,56px);border-radius:10px;object-fit:cover;display:block;margin:0 auto 4px">` : `<div style="width:clamp(36px,4.5vh,56px);height:clamp(36px,4.5vh,56px);border-radius:10px;background:${t.color}44;display:flex;align-items:center;justify-content:center;margin:0 auto 6px;font-size:28px">⚽</div>`}
+        ${t.avatar
+          ? `<div style="width:100%;aspect-ratio:1;overflow:hidden;border-radius:10px;border:3px solid ${t.color};box-shadow:0 0 12px ${t.color}66;margin-bottom:4px"><img src="${t.avatar}" style="width:100%;height:100%;object-fit:cover;display:block"></div>`
+          : `<div style="width:100%;aspect-ratio:1;border-radius:10px;background:${t.color}33;border:3px solid ${t.color};display:flex;align-items:center;justify-content:center;margin-bottom:4px;font-size:clamp(22px,3vh,36px)">⚽</div>`}
         <div class="dp-sc-name" style="color:${isLead ? 'rgba(255,215,0,0.9)' : 'rgba(255,255,255,0.8)'};font-size:11px;letter-spacing:0.3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:88px">${esc(t.name)}</div>
         <div class="dp-sc-score" style="color:${isLead ? '#FFD700' : '#fff'}">${hidden ? '?' : t.score}</div>
       </div>`;
@@ -2936,7 +2951,7 @@ function renderDpPodium(teams) {
         <div style="display:flex;align-items:center;gap:10px;padding:8px 16px;
           background:${t.color}18;border:1px solid ${t.color}44;border-radius:10px;
           opacity:0;animation:dpPodIn 0.4s ease 2.2s both">
-          <span style="font-family:'Bebas Neue',sans-serif;font-size:16px;color:var(--text3)">#${t.place}</span>
+          <span style="font-size:20px">💩</span>
           ${t.avatar ? `<img src="${t.avatar}" style="width:36px;height:36px;border-radius:8px;object-fit:cover">` : ''}
           <span style="font-family:'Bebas Neue',sans-serif;font-size:20px;color:${t.color}">${esc(t.name)}</span>
           <span style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:#fff">${t.score}&nbsp;P</span>
