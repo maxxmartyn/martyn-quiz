@@ -29,15 +29,11 @@ const CL_CLOUD  = 'dw3xnne9q';
 const CL_PRESET = 'max_martyn_party';
 const CL_URL    = `https://api.cloudinary.com/v1_1/${CL_CLOUD}/image/upload`;
 
-async function uploadToCloudinary(file, folder, faceDetect) {
+async function uploadToCloudinary(file, folder) {
   const fd = new FormData();
   fd.append('file', file);
   fd.append('upload_preset', CL_PRESET);
   fd.append('folder', folder || 'quizmaster/misc');
-  // For avatars: request face-centered square crop at upload time
-  if (faceDetect) {
-    fd.append('transformation', 'c_fill,g_face,ar_1:1,q_auto,f_auto');
-  }
   const r = await fetch(CL_URL, { method: 'POST', body: fd });
   const d = await r.json();
   if (d.secure_url) return d.secure_url;
@@ -2229,7 +2225,7 @@ async function upTeamAvatar(e, i) {
   const wrap = e.target.closest('.trow')?.querySelector('.t-avatar-wrap');
   if (wrap) wrap.innerHTML = '⏳';
   try {
-    const url = await uploadToCloudinary(f, 'quizmaster/avatars', true);
+    const url = await uploadToCloudinary(f, 'quizmaster/avatars');
     lTeams[i].avatar = url;
     renderTeams();
   } catch { alert('Bilduppladdning misslyckades'); renderTeams(); }
