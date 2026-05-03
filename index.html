@@ -2195,7 +2195,7 @@ function startLive() {
   liveState = {
     quiz,
     teams: lTeams.map(t => ({ ...t, score: 0 })),
-    qi: 0, revealed: false, tv: 30, tmax: 30, tr: false,
+    qi: 0, revealed: false, tv: 0, tmax: 30, tr: false,
     currentRound: ''  // tracks current category from last slide
   };
   document.getElementById('live-setup').style.display = 'none';
@@ -2334,6 +2334,8 @@ function startTimer(resumeVal) {
   const val = resumeVal ?? (parseInt(document.getElementById('tinput').value) || 30);
   if (!resumeVal) liveState.tmax = val; // only reset max on fresh start
   liveState.tv = val; liveState.tr = true;
+  const btn = document.getElementById('pauseBtn');
+  if (btn) btn.textContent = '⏸ Paus';
   timerInt = setInterval(() => {
     liveState.tv--;
     const v = liveState.tv;
@@ -2352,15 +2354,17 @@ function startTimer(resumeVal) {
 
 function pauseTimer() {
   if (!liveState) return;
+  const btn = document.getElementById('pauseBtn');
   if (!timerInt) {
-    // Already paused — resume
+    // Resume
+    if (btn) btn.textContent = '⏸ Paus';
     startTimer(liveState.tv);
     return;
   }
+  // Pause
   clearInterval(timerInt); timerInt = null;
   liveState.tr = false;
-  // tv stays at current value — display will show frozen timer
-  document.getElementById('lvtval')?.textContent && (document.getElementById('lvtval').textContent = liveState.tv + 'S');
+  if (btn) btn.textContent = '▶ Resume';
   syncDispTimer();
 }
 
@@ -2369,6 +2373,8 @@ function stopTimer() {
   if (liveState) { liveState.tr = false; liveState.tv = 0; }
   document.getElementById('lvtval')?.classList.remove('warn');
   document.getElementById('lvtbar')?.classList.remove('warn');
+  const btn = document.getElementById('pauseBtn');
+  if (btn) btn.textContent = '⏸ Paus';
   syncDispTimer(); // tell display timer is stopped
 }
 
@@ -2645,7 +2651,7 @@ function renderDisplay(data) {
   const tr   = data.timer?.tr   ?? data.tr   ?? false;
   // Force question rebuild when coming from intro/standby or when forceRender is set
   if (_prevState !== 'live' || data.forceRender !== _prevForce) {
-    _prevQi = -1; _prevRev = false;
+    if (!_timerExpired) { _prevQi = -1; _prevRev = false; } // don't reset if waiting for reveal
     _prevForce = data.forceRender || 0;
   }
   _prevState = 'live';
@@ -2740,12 +2746,13 @@ function renderDisplay(data) {
   // Question — only rebuild when question or reveal state changes
   if (q.idx !== _prevQi || revealed !== _prevRev) {
     const wasNewQ = q.idx !== _prevQi;
-    // Clear expired flag on new question or reveal
-    if (wasNewQ || revealed) _timerExpired = false;
+    // Only clear timerExpired on GENUINE new question index or reveal
+    if (revealed) _timerExpired = false;
+    if (wasNewQ) _timerExpired = false;
     _prevQi  = q.idx;
     _prevRev = revealed;
-    // Don't rebuild question if timer just expired and not yet revealed
-    if (_timerExpired && !revealed && !wasNewQ) { /* keep waiting overlay */ } else {
+    // Don't rebuild question if timer expired and not yet revealed
+    if (_timerExpired) { /* keep waiting overlay — don't rebuild */ } else {
     buildDpQuestion(q, revealed, data);
     if (wasNewQ) {
       const m = document.getElementById('dp-main');
