@@ -2690,16 +2690,16 @@ function renderDisplay(data) {
   // Scoreboard — always rebuild with correct sort + colors
   const sbw = document.getElementById('dp-sbw');
   const sb  = document.getElementById('dp-sb');
-  const _t = scoreTeams || data.teams;
-  const teamsKey = _t ? JSON.stringify(_t.map(t=>t.score+t.name)) : '';
-  const teams = scoreTeams || data.teams;
+  // Teams and hidden flag: support both full sync and score-only sync formats
+  const teams = (data.score && data.score.teams) ? data.score.teams : (data.teams || []);
+  const hidden = (data.score && data.score.scoresHidden) ? data.score.scoresHidden : (data.scoresHidden === true);
+  const teamsKey = teams.length ? JSON.stringify(teams.map(t=>t.score+t.name)) : '';
   if (teams && teams.length && teamsKey !== window._prevTeamsKey) {
     window._prevTeamsKey = teamsKey;
     sbw.style.display = 'block';
     const mx = Math.max(...teams.map(t => t.score));
     const sorted = [...teams].sort((a, b) => b.score - a.score);
     // Always rebuild so order + colors are always correct
-    const hidden = data.scoresHidden === true;
     // When hidden: keep ORIGINAL order (don't reveal ranking by sorting)
     const display = hidden ? [...teams] : sorted;
     // Track previous scores for animation
