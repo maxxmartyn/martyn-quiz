@@ -1342,6 +1342,7 @@ select option { background: var(--bg2); }
                   <input type="number" id="tinput" value="30" min="5" max="300" style="width:76px">
                 </div>
                 <button class="btn btn-outline-green btn-sm" onclick="startTimer()">▶ Start</button>
+                <button class="btn btn-secondary btn-sm" onclick="pauseTimer()">⏸ Paus</button>
                 <button class="btn btn-danger btn-sm" onclick="stopTimer()">■ Stop</button>
               </div>
               <div class="lcrow">
@@ -2335,21 +2336,32 @@ function startTimer() {
   timerInt = setInterval(() => {
     liveState.tv--;
     const v = liveState.tv;
+    // Update admin UI only — NO Firebase write every tick
     document.getElementById('lvtval').textContent = v + 'S';
     document.getElementById('lvtval').classList.toggle('warn', v <= 5);
     document.getElementById('lvtbar').style.width = (v / liveState.tmax * 100) + '%';
     document.getElementById('lvtbar').classList.toggle('warn', v <= 5);
-    syncDispTimer();  // lightweight: only updates timer field
-    if (v <= 0) stopTimer();
+    if (v <= 0) {
+      stopTimer();
+      syncDispTimer(); // write final state (tr=false, tv=0)
+    }
   }, 1000);
-  syncDisp();
+  syncDisp(); // send full payload with tr=true, tv=val — display starts its OWN local countdown
+}
+
+function pauseTimer() {
+  if (!liveState || !timerInt) return;
+  clearInterval(timerInt); timerInt = null;
+  liveState.tr = false;
+  syncDispTimer(); // tell display to pause at current tv
 }
 
 function stopTimer() {
   clearInterval(timerInt); timerInt = null;
-  if (liveState) liveState.tr = false;
+  if (liveState) { liveState.tr = false; liveState.tv = 0; }
   document.getElementById('lvtval')?.classList.remove('warn');
   document.getElementById('lvtbar')?.classList.remove('warn');
+  syncDispTimer(); // tell display timer is stopped
 }
 
 /* ============================================================
@@ -2555,40 +2567,10 @@ let _prevRev = false;
 let _prevState = '';
 let _prevForce = 0;
 
-let _lastDataTs = 0;
-let _connWatchdog = null;
-
 function startDisplayListener() {
   fbListen(FB_DISP, data => {
-    _lastDataTs = Date.now();
-    hideConnWarn();
     if (data) renderDisplay(data);
   });
-  // Watchdog: if no data for 8s while visible, show warning
-  _connWatchdog = setInterval(() => {
-    const panel = document.getElementById('display-panel');
-    if (!panel || !panel.classList.contains('active')) return;
-    if (_lastDataTs > 0 && Date.now() - _lastDataTs > 8000) {
-      showConnWarn();
-    }
-  }, 2000);
-}
-
-function showConnWarn() {
-  let w = document.getElementById('dp-connwarn');
-  if (w) return;
-  w = document.createElement('div');
-  w.id = 'dp-connwarn';
-  w.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:999;background:rgba(239,68,68,0.9);color:#fff;text-align:center;padding:8px;font-family:Bebas Neue,sans-serif;font-size:18px;letter-spacing:2px;animation:syncPulse 1s ease infinite';
-  w.textContent = '⚠ ANSLUTNINGEN TILL FIREBASE ÄR BORTA — KONTROLLERA NÄTVERK';
-  document.body.appendChild(w);
-}
-
-function hideConnWarn() {
-  const w = document.getElementById('dp-connwarn');
-  if (w) w.remove();
-  const ws = document.getElementById('dp-wait-sub');
-  if (ws) ws.textContent = 'QUIZ STARTAR SNART ✦';
 }
 
 function renderDisplay(data) {
@@ -2670,17 +2652,39 @@ function renderDisplay(data) {
     qinfoEl.textContent = `Fråga ${q.roundIdx ? q.roundIdx.n : q.idx+1}/${q.roundIdx ? q.roundIdx.of : q.total}`;
   }
 
-  // Timer — in-place, no DOM rebuild
+  // Timer — display runs its own local countdown (no Firebase per tick)
   const tb  = document.getElementById('dp-tb');
   const tbr = document.getElementById('dp-timer-row');
   const tbf = document.getElementById('dp-tbf');
   if (tr && tv > 0) {
+    // Start/resync local countdown
+    if (window._dpTimerInt) clearInterval(window._dpTimerInt);
+    let _tv = tv; const _tmax = tmax || tv;
     tbr.style.display = 'flex';
-    tb.textContent    = tv + 'S';
-    tb.classList.toggle('warn', tv <= 5);
-    tbf.style.width   = (tmax > 0 ? (tv / tmax * 100) : 0) + '%';
-    tbf.classList.toggle('warn', tv <= 5);
+    tb.textContent = _tv + 'S';
+    tb.classList.toggle('warn', _tv <= 5);
+    tbf.style.width = (_tv / _tmax * 100) + '%';
+    tbf.classList.toggle('warn', _tv <= 5);
+    window._dpTimerInt = setInterval(() => {
+      _tv--;
+      if (_tv < 0) { clearInterval(window._dpTimerInt); return; }
+      tb.textContent = _tv + 'S';
+      tb.classList.toggle('warn', _tv <= 5);
+      tbf.style.width = (_tv / _tmax * 100) + '%';
+      tbf.classList.toggle('warn', _tv <= 5);
+      if (_tv <= 0) {
+        // Timer reached zero — hide question content, show waiting overlay
+        clearInterval(window._dpTimerInt);
+        tbr.style.display = 'none';
+        const m = document.getElementById('dp-main');
+        m.innerHTML = `<div style="font-family:'Bebas Neue',sans-serif;font-size:clamp(28px,5vw,64px);
+          letter-spacing:6px;color:rgba(255,255,255,0.25);text-align:center">
+          VÄNTAR PÅ SVAR...</div>`;
+      }
+    }, 1000);
   } else {
+    // Timer stopped/paused
+    if (window._dpTimerInt) { clearInterval(window._dpTimerInt); window._dpTimerInt = null; }
     tbr.style.display = 'none';
     tbf.style.width   = '0%';
     tbf.classList.remove('warn');
@@ -2693,10 +2697,8 @@ function renderDisplay(data) {
   // Teams and hidden flag: support both full sync and score-only sync formats
   const teams = (data.score && data.score.teams) ? data.score.teams : (data.teams || []);
   const hidden = (data.score && data.score.scoresHidden) ? data.score.scoresHidden : (data.scoresHidden === true);
-  const teamsKey = teams.length ? JSON.stringify(teams.map(t=>t.score+t.name)) : '';
-  if (teams && teams.length && teamsKey !== window._prevTeamsKey) {
-    window._prevTeamsKey = teamsKey;
-    sbw.style.display = 'block';
+  sbw.style.display = teams && teams.length ? 'block' : 'none';
+  if (teams && teams.length) {
     const mx = Math.max(...teams.map(t => t.score));
     const sorted = [...teams].sort((a, b) => b.score - a.score);
     // Always rebuild so order + colors are always correct
