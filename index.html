@@ -1054,7 +1054,7 @@ select option { background: var(--bg2); }
 .dp-sb-wrap {
   display: none; padding: 6px 16px 0;
   flex-shrink: 0; position: relative; z-index: 2;
-  max-height: 22vh; overflow: hidden;
+  max-height: 22vh; overflow: visible;
 }
 .dp-sb { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
 .dp-sbc {
@@ -1069,10 +1069,11 @@ select option { background: var(--bg2); }
   overflow: hidden;
 }
 .dp-sbc.lead {
-  background: rgba(255,215,0,0.12);
-  border-color: rgba(255,215,0,0.6);
-  box-shadow: 0 0 28px rgba(255,215,0,0.3);
-  transform: scale(1.08) translateY(-3px);
+  border-color: rgba(255,215,0,0.6) !important;
+  background: rgba(255,215,0,0.12) !important;
+  box-shadow: 0 0 24px rgba(255,215,0,0.35), 0 0 48px rgba(255,215,0,0.12);
+  z-index: 2;
+  outline: 2px solid rgba(255,215,0,0.5);
 }
 .dp-sc-name {
   font-size: 10px; font-weight: 800; letter-spacing: 1px;
@@ -1786,6 +1787,8 @@ function buildQCard(qn, i) {
       <div class="qnum">F${i+1}</div>
       <div class="qprev">${esc(plainText(qn.text) || '(ingen text)')}</div>
       <div class="qtag ${tc}">${tl}</div>
+      <button class="qmovebtn" onclick="event.stopPropagation();moveQ(${i},-1)" title="Flytta upp">↑</button>
+      <button class="qmovebtn" onclick="event.stopPropagation();moveQ(${i},1)" title="Flytta ned">↓</button>
       <span class="qchev" id="qchev_${i}">▾</span>
     </div>
     <div class="qbody" id="qb_${i}">
@@ -2300,6 +2303,8 @@ function renderLiveQ() {
   document.getElementById('lvtval').classList.remove('warn');
   document.getElementById('lvtbar').style.width = '100%';
   document.getElementById('lvtbar').classList.remove('warn');
+  // Reset timer state for new question — display won't show timer until Start pressed
+  liveState.tv = 0; liveState.tr = false;
 
   renderScEnt();
   renderSB();
@@ -2355,12 +2360,14 @@ function startTimer(resumeVal) {
 function pauseTimer() {
   if (!liveState) return;
   const btn = document.getElementById('pauseBtn');
-  if (!timerInt) {
-    // Resume
+  // Only resume if we have a non-zero tv (i.e. timer was actually running before)
+  if (!timerInt && liveState.tv > 0) {
+    // Resume from paused state
     if (btn) btn.textContent = '⏸ Paus';
     startTimer(liveState.tv);
     return;
   }
+  if (!timerInt) return; // nothing to pause
   // Pause
   clearInterval(timerInt); timerInt = null;
   liveState.tr = false;
