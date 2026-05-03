@@ -1342,7 +1342,7 @@ select option { background: var(--bg2); }
                   <input type="number" id="tinput" value="30" min="5" max="300" style="width:76px">
                 </div>
                 <button class="btn btn-outline-green btn-sm" onclick="startTimer()">▶ Start</button>
-                <button class="btn btn-secondary btn-sm" onclick="pauseTimer()">⏸ Paus</button>
+                <button class="btn btn-secondary btn-sm" onclick="pauseTimer()" id="pauseBtn">⏸ Paus</button>
                 <button class="btn btn-danger btn-sm" onclick="stopTimer()">■ Stop</button>
               </div>
               <div class="lcrow">
@@ -2329,10 +2329,11 @@ function prevQ() { if (!liveState) return; stopTimer(); if (liveState.qi > 0) { 
 /* ============================================================
    TIMER
 ============================================================ */
-function startTimer() {
-  stopTimer();
-  const val = parseInt(document.getElementById('tinput').value) || 30;
-  liveState.tv = val; liveState.tmax = val; liveState.tr = true;
+function startTimer(resumeVal) {
+  if (timerInt) { clearInterval(timerInt); timerInt = null; }
+  const val = resumeVal ?? (parseInt(document.getElementById('tinput').value) || 30);
+  if (!resumeVal) liveState.tmax = val; // only reset max on fresh start
+  liveState.tv = val; liveState.tr = true;
   timerInt = setInterval(() => {
     liveState.tv--;
     const v = liveState.tv;
@@ -2350,10 +2351,17 @@ function startTimer() {
 }
 
 function pauseTimer() {
-  if (!liveState || !timerInt) return;
+  if (!liveState) return;
+  if (!timerInt) {
+    // Already paused — resume
+    startTimer(liveState.tv);
+    return;
+  }
   clearInterval(timerInt); timerInt = null;
   liveState.tr = false;
-  syncDispTimer(); // tell display to pause at current tv
+  // tv stays at current value — display will show frozen timer
+  document.getElementById('lvtval')?.textContent && (document.getElementById('lvtval').textContent = liveState.tv + 'S');
+  syncDispTimer();
 }
 
 function stopTimer() {
@@ -2566,6 +2574,7 @@ let _prevQi = -1;
 let _prevRev = false;
 let _prevState = '';
 let _prevForce = 0;
+let _timerExpired = false; // set when local timer hits 0, cleared on reveal
 
 function startDisplayListener() {
   fbListen(FB_DISP, data => {
@@ -2673,17 +2682,26 @@ function renderDisplay(data) {
       tbf.style.width = (_tv / _tmax * 100) + '%';
       tbf.classList.toggle('warn', _tv <= 5);
       if (_tv <= 0) {
-        // Timer reached zero — hide question content, show waiting overlay
+        // Timer reached zero — hide question, show waiting overlay
         clearInterval(window._dpTimerInt);
+        _timerExpired = true;
         tbr.style.display = 'none';
         const m = document.getElementById('dp-main');
         m.innerHTML = `<div style="font-family:'Bebas Neue',sans-serif;font-size:clamp(28px,5vw,64px);
-          letter-spacing:6px;color:rgba(255,255,255,0.25);text-align:center">
-          VÄNTAR PÅ SVAR...</div>`;
+          letter-spacing:6px;color:rgba(255,255,255,0.25);text-align:center;padding:20px">
+          ⏱ VÄNTAR PÅ SVAR...</div>`;
       }
     }, 1000);
+  } else if (tv > 0) {
+    // PAUSED — stop local countdown, show frozen value
+    if (window._dpTimerInt) { clearInterval(window._dpTimerInt); window._dpTimerInt = null; }
+    tbr.style.display = 'flex';
+    tb.textContent = tv + 'S';
+    tb.classList.toggle('warn', tv <= 5);
+    tbf.style.width = (tmax > 0 ? (tv / tmax * 100) : 0) + '%';
+    tbf.classList.toggle('warn', tv <= 5);
   } else {
-    // Timer stopped/paused
+    // STOPPED (tv=0) — hide timer
     if (window._dpTimerInt) { clearInterval(window._dpTimerInt); window._dpTimerInt = null; }
     tbr.style.display = 'none';
     tbf.style.width   = '0%';
@@ -2722,8 +2740,12 @@ function renderDisplay(data) {
   // Question — only rebuild when question or reveal state changes
   if (q.idx !== _prevQi || revealed !== _prevRev) {
     const wasNewQ = q.idx !== _prevQi;
+    // Clear expired flag on new question or reveal
+    if (wasNewQ || revealed) _timerExpired = false;
     _prevQi  = q.idx;
     _prevRev = revealed;
+    // Don't rebuild question if timer just expired and not yet revealed
+    if (_timerExpired && !revealed && !wasNewQ) { /* keep waiting overlay */ } else {
     buildDpQuestion(q, revealed, data);
     if (wasNewQ) {
       const m = document.getElementById('dp-main');
@@ -2731,6 +2753,7 @@ function renderDisplay(data) {
       void m.offsetWidth; // force reflow
       m.classList.add('animate');
     }
+    } // end _timerExpired check
   }
 }
 
