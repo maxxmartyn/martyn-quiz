@@ -1001,9 +1001,11 @@ select option { background: var(--bg2); }
 }
 .dp-qinfo {
   font-family: 'Bebas Neue', sans-serif;
-  font-size: clamp(18px, 2.8vw, 30px);
-  letter-spacing: 4px; color: rgba(255,255,255,0.9);
-  text-transform: uppercase;
+  font-size: clamp(11px, 1.4vw, 16px);
+  letter-spacing: 3px;
+  color: rgba(255,255,255,0.45);
+  text-align: right;
+  flex-shrink: 0;
 }
 
 /* ── Timer bar (thin, colourful) ── */
@@ -1023,14 +1025,14 @@ select option { background: var(--bg2); }
   display: none;
   justify-content: center;
   align-items: center;
-  padding: 2px 0;
+  padding: 1px 0;
   flex-shrink: 0;
   position: relative;
   z-index: 10;
 }
 .dp-timer-big {
   font-family: 'Bebas Neue', sans-serif;
-  font-size: clamp(36px, 6vh, 80px);
+  font-size: clamp(36px, 6vh, 90px);
   color: var(--green);
   letter-spacing: 4px;
   background: rgba(0,230,118,0.08);
@@ -1070,15 +1072,14 @@ select option { background: var(--bg2); }
   display: flex;
   flex-direction: column;
   align-items: center;
-  border-radius: 14px;
-  border: 3px solid transparent;
+  border-radius: 10px;
+  border: 2px solid transparent;
   overflow: hidden;
   transition: all 0.4s cubic-bezier(.34,1.2,.64,1);
   position: relative;
   flex-shrink: 1;
   min-width: 0;
-  /* Base size */
-  width: clamp(90px, 9.5vw, 130px);
+  width: clamp(72px, 7.5vw, 120px);
 }
 .dp-sbc .dp-sbc-img {
   width: 100%;
@@ -1087,59 +1088,62 @@ select option { background: var(--bg2); }
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: clamp(24px,3.5vh,44px);
+  font-size: clamp(18px,2.8vh,34px);
 }
 .dp-sbc .dp-sbc-img img {
   width: 100%; height: 100%; object-fit: cover; display: block;
 }
 .dp-sbc .dp-sbc-info {
   width: 100%;
-  padding: 4px 6px 5px;
+  padding: 3px 4px 4px;
   text-align: center;
 }
 .dp-sc-name {
-  font-size: clamp(9px,1.1vw,13px);
+  font-size: clamp(8px,0.9vw,11px);
   font-weight: 800;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.3px;
   text-transform: uppercase;
-  color: rgba(255,255,255,0.75);
+  color: rgba(255,255,255,0.8);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  width: 100%;
   margin-bottom: 1px;
 }
 .dp-sc-score {
   font-family: 'Bebas Neue', sans-serif;
-  font-size: clamp(22px,3.2vh,42px);
+  font-size: clamp(18px,2.8vh,36px);
   color: #fff;
   line-height: 1;
 }
 /* LEAD — larger card */
 .dp-sbc.lead {
-  width: clamp(115px, 12.5vw, 170px) !important;
+  width: clamp(90px, 9.5vw, 148px) !important;
   border-color: rgba(255,215,0,0.8) !important;
   box-shadow:
     0 0 0 2px rgba(255,215,0,0.3),
-    0 0 32px rgba(255,215,0,0.5),
-    0 0 64px rgba(255,215,0,0.2);
+    0 0 24px rgba(255,215,0,0.5),
+    0 0 48px rgba(255,215,0,0.15);
   z-index: 3;
 }
-.dp-sbc.lead .dp-sc-score { color: #FFD700; font-size: clamp(28px,4vh,52px); }
-.dp-sbc.lead .dp-sc-name  { color: rgba(255,215,0,0.9); font-size: clamp(11px,1.3vw,15px); }
+.dp-sbc.lead .dp-sc-score { color: #FFD700; font-size: clamp(22px,3.2vh,42px); }
+.dp-sbc.lead .dp-sc-name  { color: rgba(255,215,0,0.9); font-size: clamp(9px,1vw,13px); }
 @keyframes scorePop {
   0%   { filter: brightness(1); }
-  40%  { filter: brightness(2) saturate(1.5); }
+  40%  { filter: brightness(1.8) saturate(1.4); }
   100% { filter: brightness(1); }
 }
 .dp-sbc.score-pop { animation: scorePop 0.6s ease; }
-.dp-sbc.lead .dp-sc-name  { color: rgba(255,215,0,0.8); }
 
 /* ── Main content area ── */
 .dp-main {
   flex: 1;
-  overflow: hidden; display: flex; flex-direction: column;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
   align-items: center; justify-content: center;
-  padding: 4px 32px; gap: 6px;
+  padding: 4px 28px; gap: 4px;
   overflow: hidden; position: relative; z-index: 1; min-height: 0;
 }
 @keyframes qSlideIn {
@@ -1175,17 +1179,18 @@ select option { background: var(--bg2); }
 
 /* ── Image ── */
 .dp-q-img {
-  max-height: min(28vh, 300px); max-width: 88%;
+  max-height: min(26vh, 280px); max-width: 88%;
   object-fit: contain; border-radius: 14px;
   box-shadow: 0 12px 48px rgba(0,0,0,0.6);
   display: block; flex-shrink: 1;
 }
 
+
 /* ── MC Answer choices — colourful Kahoot-style ── */
 /* Each answer gets a distinct colour */
 .dp-choices {
   display: grid; grid-template-columns: 1fr 1fr;
-  gap: 10px; width: 100%; max-width: 1000px; flex-shrink: 1;
+  gap: 8px; width: 100%; max-width: 1000px; flex-shrink: 1; min-height: 0;
 }
 .dp-choice {
   border-radius: 10px;
@@ -1367,6 +1372,7 @@ select option { background: var(--bg2); }
             <button class="btn btn-primary btn-sm" onclick="nextQ()">Nästa →</button>
             <button class="btn btn-outline-green btn-sm" id="toggleScoreBtn" onclick="toggleScores()">👁 Dölj poäng</button>
             <button class="btn btn-outline-green btn-sm" onclick="showPodium()">🏆 Slutresultat</button>
+            <button class="btn btn-secondary btn-sm" id="podiumBackBtn" style="display:none" onclick="backFromPodium()">← Tillbaka till quiz</button>
             <button class="btn btn-danger btn-sm" onclick="confirmEnd()">■ Avsluta</button>
           </div>
         </div>
@@ -1428,8 +1434,9 @@ select option { background: var(--bg2); }
 <div id="display-panel">
   <div class="dp-header">
     <div class="dp-logo">THE MARTYN SHOW</div>
+    <div style="flex:1"></div>
     <div class="dp-qinfo" id="dp-qinfo">VÄNTAR...</div>
-    <button onclick="toggleFS()" style="background:none;border:1px solid rgba(255,255,255,0.2);color:rgba(255,255,255,0.5);padding:4px 10px;cursor:pointer;font-size:12px;border-radius:6px;letter-spacing:1px" title="Helskärm" id="fsBtn">⛶ FULLSKÄRM</button>
+    <button onclick="toggleFS()" style="background:none;border:none;color:rgba(255,255,255,0.2);padding:2px 6px;cursor:pointer;font-size:10px;border-radius:4px;letter-spacing:0.5px;flex-shrink:0" title="Helskärm" id="fsBtn">⛶</button>
   </div>
   <div class="dp-timerbar" id="dp-timerbar"><div class="dp-tbf" id="dp-tbf" style="width:0%"></div></div>
   <!-- Timer sits above scoreboard, hidden until started -->
@@ -1626,6 +1633,15 @@ function setMode(m) {
     whenReady(() => { loadFromFirebase(); startProfileListener(); });
   } else {
     document.getElementById('display-panel').classList.add('active');
+    // Normalize zoom for large TVs — treat anything wider than 1920 as 1920
+    (function normalizeDisplayZoom() {
+      const targetW = 1920;
+      if (window.screen.width > targetW) {
+        const scale = targetW / window.screen.width;
+        const vp = document.querySelector('meta[name="viewport"]');
+        if (vp) vp.content = `width=${targetW}, initial-scale=${scale.toFixed(3)}`;
+      }
+    })();
     whenReady(() => startDisplayListener());
   }
 }
@@ -2792,21 +2808,47 @@ function renderDisplay(data) {
     const display = hidden ? [...teams] : sorted;
     // Track previous scores for animation
     if (!window._prevScores) window._prevScores = {};
-    sb.innerHTML = display.map(t => {
-      const isLead = !hidden && t.score === mx && t.score > 0;
-      const scoreChanged = window._prevScores[t.name] !== undefined && window._prevScores[t.name] !== t.score;
-      window._prevScores[t.name] = t.score;
-      return `<div class="dp-sbc ${isLead ? 'lead' : ''}${scoreChanged ? ' score-pop' : ''}"
-        style="background:${isLead ? 'rgba(255,215,0,0.12)' : t.color+'18'};border-color:${isLead ? 'rgba(255,215,0,0.7)' : t.color+'88'}">
-        <div class="dp-sbc-img" style="background:${t.color}22">
-          ${t.avatar ? `<img src="${t.avatar}">` : '⚽'}
-        </div>
-        <div class="dp-sbc-info" style="background:${isLead ? 'rgba(255,215,0,0.08)' : t.color+'22'}">
-          <div class="dp-sc-name">${esc(t.name)}</div>
-          <div class="dp-sc-score">${hidden ? '?' : t.score}</div>
-        </div>
-      </div>`;
-    }).join('');
+    const needsRebuild = sb.children.length !== display.length || sb.dataset.hidden !== String(hidden);
+    sb.dataset.hidden = String(hidden);
+    if (needsRebuild) {
+      // Full rebuild only when team count or hidden state changes
+      if (!window._prevScores) window._prevScores = {};
+      display.forEach(t => { window._prevScores[t.name] = t.score; });
+      sb.innerHTML = display.map(t => {
+        const isLead = !hidden && t.score === mx && t.score > 0;
+        return `<div class="dp-sbc ${isLead ? 'lead' : ''}" data-name="${esc(t.name)}"
+          style="background:${isLead ? 'rgba(255,215,0,0.12)' : t.color+'18'};border-color:${isLead ? 'rgba(255,215,0,0.7)' : t.color+'88'}">
+          <div class="dp-sbc-img" style="background:${t.color}22">
+            ${t.avatar ? `<img src="${t.avatar}">` : '⚽'}
+          </div>
+          <div class="dp-sbc-info" style="background:${isLead ? 'rgba(255,215,0,0.08)' : t.color+'22'}">
+            <div class="dp-sc-name">${esc(t.name)}</div>
+            <div class="dp-sc-score" data-score>${hidden ? '?' : t.score}</div>
+          </div>
+        </div>`;
+      }).join('');
+    } else {
+      // In-place update — no DOM rebuild, no blink
+      if (!window._prevScores) window._prevScores = {};
+      display.forEach((t, i) => {
+        const card = sb.children[i];
+        if (!card) return;
+        const isLead = !hidden && t.score === mx && t.score > 0;
+        const scoreEl = card.querySelector('[data-score]');
+        const scoreChanged = window._prevScores[t.name] !== undefined && window._prevScores[t.name] !== t.score;
+        window._prevScores[t.name] = t.score;
+        // Update score value
+        if (scoreEl) scoreEl.textContent = hidden ? '?' : t.score;
+        // Update lead styling
+        card.className = 'dp-sbc' + (isLead ? ' lead' : '') + (scoreChanged ? ' score-pop' : '');
+        card.style.background = isLead ? 'rgba(255,215,0,0.12)' : t.color+'18';
+        card.style.borderColor = isLead ? 'rgba(255,215,0,0.7)' : t.color+'88';
+        const info = card.querySelector('.dp-sbc-info');
+        if (info) info.style.background = isLead ? 'rgba(255,215,0,0.08)' : t.color+'22';
+        // Remove pop class after animation
+        if (scoreChanged) setTimeout(() => card.classList.remove('score-pop'), 700);
+      });
+    }
   }
 
   // Question — only rebuild when question or reveal state changes
@@ -3036,7 +3078,7 @@ function launchConfetti() {
   const ctx = canvas.getContext('2d');
   canvas.width  = window.innerWidth;
   canvas.height = window.innerHeight;
-  const pieces = Array.from({length: 160}, () => ({
+  const pieces = Array.from({length: 80}, () => ({
     x: Math.random() * canvas.width,
     y: -20 - Math.random() * 200,
     r: 4 + Math.random() * 6,
@@ -3057,7 +3099,7 @@ function launchConfetti() {
       if (p.y > canvas.height) { p.y = -20; p.x = Math.random()*canvas.width; }
     });
     frame++;
-    if (frame < 420) requestAnimationFrame(draw);
+    if (frame < 280) requestAnimationFrame(draw);
     else canvas.remove();
   }
   draw();
