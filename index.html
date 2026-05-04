@@ -986,25 +986,24 @@ select option { background: var(--bg2); }
 
 /* ── Header ── */
 .dp-header {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 10px 36px;
-  background: rgba(0,0,0,0.45);
-  border-bottom: 3px solid rgba(255,255,255,0.08);
-  flex-shrink: 0; position: relative; z-index: 2;
-  backdrop-filter: blur(12px);
+  display: flex; align-items: center; gap: 12px;
+  padding: 3px 14px 0;
+  flex-shrink: 0;
+  min-height: 0;
 }
 .dp-logo {
   font-family: 'Bebas Neue', sans-serif;
-  font-size: 19px; letter-spacing: 5px;
+  font-size: clamp(10px, 1vw, 14px); letter-spacing: 3px;
   background: linear-gradient(90deg,#00E676,#69f0ae);
   -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  flex-shrink: 0; opacity: 0.5;
 }
 .dp-qinfo {
   font-family: 'Bebas Neue', sans-serif;
-  font-size: clamp(11px, 1.4vw, 16px);
-  letter-spacing: 3px;
-  color: rgba(255,255,255,0.45);
-  text-align: right;
+  font-size: clamp(9px, 0.9vw, 12px);
+  letter-spacing: 2px;
+  color: rgba(255,255,255,0.3);
+  margin-left: auto;
   flex-shrink: 0;
 }
 
@@ -1055,7 +1054,7 @@ select option { background: var(--bg2); }
 /* ── Scoreboard ── */
 .dp-sb-wrap {
   display: none;
-  padding: 8px 20px 0;
+  padding: 4px 16px 0;
   flex-shrink: 0;
   position: relative;
   z-index: 2;
@@ -1436,7 +1435,7 @@ select option { background: var(--bg2); }
     <div class="dp-logo">THE MARTYN SHOW</div>
     <div style="flex:1"></div>
     <div class="dp-qinfo" id="dp-qinfo">VÄNTAR...</div>
-    <button onclick="toggleFS()" style="background:none;border:none;color:rgba(255,255,255,0.2);padding:2px 6px;cursor:pointer;font-size:10px;border-radius:4px;letter-spacing:0.5px;flex-shrink:0" title="Helskärm" id="fsBtn">⛶</button>
+    <button onclick="toggleFS()" style="background:none;border:none;color:rgba(255,255,255,0.15);padding:1px 4px;cursor:pointer;font-size:9px;flex-shrink:0" title="Helskärm" id="fsBtn">⛶</button>
   </div>
   <div class="dp-timerbar" id="dp-timerbar"><div class="dp-tbf" id="dp-tbf" style="width:0%"></div></div>
   <!-- Timer sits above scoreboard, hidden until started -->
@@ -2298,6 +2297,8 @@ function endLive() {
   document.getElementById('lbadge').style.display = 'none';
   const ssE = document.getElementById('sync-status');
   if (ssE) ssE.style.display = 'none';
+  const bBtn = document.getElementById('podiumBackBtn');
+  if (bBtn) bBtn.style.display = 'none';
   // Restore startShowBtn for next time
   const ssb = document.getElementById('startShowBtn');
   if (ssb) ssb.style.display = '';
@@ -2563,9 +2564,21 @@ function showPodium() {
   setTimeout(() => rest.classList.add('show'), 2400);
 
   syncDisp({ state: 'podium', teams: liveState.teams.map(t => ({ ...t })), ts: Date.now() });
+  // Show back button
+  const backBtn = document.getElementById('podiumBackBtn');
+  if (backBtn) backBtn.style.display = 'inline-flex';
 }
 
 /* Close podium AND end the quiz → back to quiz list */
+function backFromPodium() {
+  const backBtn = document.getElementById('podiumBackBtn');
+  if (backBtn) backBtn.style.display = 'none';
+  document.getElementById('pod-overlay').classList.remove('open');
+  [1,2,3].forEach(p => document.getElementById('pc'+p)?.classList.remove('show'));
+  document.getElementById('pod-rest').classList.remove('show');
+  syncDisp(); // re-show current question
+}
+
 function closePodiumAndEnd() {
   // Hide podium overlay
   document.getElementById('pod-overlay').classList.remove('open');
