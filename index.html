@@ -973,7 +973,7 @@ select option { background: var(--bg2); }
 
 /* ── Background: rich dark purple-navy gradient ── */
 #display-panel {
-  display: none; height: 100dvh; max-height: 100dvh; flex-direction: column;
+  display: none; height: 100dvh; max-height: 100dvh; flex-direction: column; position: relative;
   background: linear-gradient(160deg, #1a0533 0%, #0d1b4b 50%, #0a0f2e 100%);
   overflow: hidden; position: relative;
 }
@@ -985,12 +985,7 @@ select option { background: var(--bg2); }
 }
 
 /* ── Header ── */
-.dp-header {
-  display: flex; align-items: center; gap: 12px;
-  padding: 3px 14px 0;
-  flex-shrink: 0;
-  min-height: 0;
-}
+.dp-header { display: none; }
 .dp-logo {
   font-family: 'Bebas Neue', sans-serif;
   font-size: clamp(10px, 1vw, 14px); letter-spacing: 3px;
@@ -1054,7 +1049,7 @@ select option { background: var(--bg2); }
 /* ── Scoreboard ── */
 .dp-sb-wrap {
   display: none;
-  padding: 4px 16px 0;
+  padding: 28px 16px 0;
   flex-shrink: 0;
   position: relative;
   z-index: 2;
@@ -1078,7 +1073,7 @@ select option { background: var(--bg2); }
   position: relative;
   flex-shrink: 1;
   min-width: 0;
-  width: clamp(72px, 7.5vw, 120px);
+  width: clamp(80px, 8.5vw, 128px);
 }
 .dp-sbc .dp-sbc-img {
   width: 100%;
@@ -1098,16 +1093,17 @@ select option { background: var(--bg2); }
   text-align: center;
 }
 .dp-sc-name {
-  font-size: clamp(8px,0.9vw,11px);
-  font-weight: 800;
-  letter-spacing: 0.3px;
+  font-size: clamp(7px,0.75vw,10px);
+  font-weight: 700;
+  letter-spacing: 0px;
   text-transform: uppercase;
-  color: rgba(255,255,255,0.8);
+  color: rgba(255,255,255,0.85);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   width: 100%;
   margin-bottom: 1px;
+  padding: 0 2px;
 }
 .dp-sc-score {
   font-family: 'Bebas Neue', sans-serif;
@@ -1117,7 +1113,7 @@ select option { background: var(--bg2); }
 }
 /* LEAD — larger card */
 .dp-sbc.lead {
-  width: clamp(90px, 9.5vw, 148px) !important;
+  width: clamp(100px, 10.5vw, 160px) !important;
   border-color: rgba(255,215,0,0.8) !important;
   box-shadow:
     0 0 0 2px rgba(255,215,0,0.3),
@@ -1371,7 +1367,6 @@ select option { background: var(--bg2); }
             <button class="btn btn-primary btn-sm" onclick="nextQ()">Nästa →</button>
             <button class="btn btn-outline-green btn-sm" id="toggleScoreBtn" onclick="toggleScores()">👁 Dölj poäng</button>
             <button class="btn btn-outline-green btn-sm" onclick="showPodium()">🏆 Slutresultat</button>
-            <button class="btn btn-secondary btn-sm" id="podiumBackBtn" style="display:none" onclick="backFromPodium()">← Tillbaka till quiz</button>
             <button class="btn btn-danger btn-sm" onclick="confirmEnd()">■ Avsluta</button>
           </div>
         </div>
@@ -1426,18 +1421,19 @@ select option { background: var(--bg2); }
   <div class="pod-title">🏆 SLUTRESULTAT</div>
   <div class="pod-stage" id="pod-stage"></div>
   <div class="pod-rest" id="pod-rest"></div>
-  <button class="btn btn-secondary" onclick="closePodiumAndEnd()" style="margin-top:16px">✕ Stäng & Avsluta Quiz</button>
+  <div style="display:flex;gap:12px;margin-top:16px">
+    <button class="btn btn-secondary" id="podiumBackBtn" onclick="backFromPodium()">← Tillbaka till quiz</button>
+    <button class="btn btn-danger" onclick="closePodiumAndEnd()">✕ Stäng & Avsluta Quiz</button>
+  </div>
 </div>
 
 <!-- ===================== DISPLAY ===================== -->
 <div id="display-panel">
-  <div class="dp-header">
-    <div class="dp-logo">THE MARTYN SHOW</div>
-    <div style="flex:1"></div>
-    <div class="dp-qinfo" id="dp-qinfo">VÄNTAR...</div>
-    <button onclick="toggleFS()" style="background:none;border:none;color:rgba(255,255,255,0.15);padding:1px 4px;cursor:pointer;font-size:9px;flex-shrink:0" title="Helskärm" id="fsBtn">⛶</button>
-  </div>
-  <div class="dp-timerbar" id="dp-timerbar"><div class="dp-tbf" id="dp-tbf" style="width:0%"></div></div>
+  <!-- Corner badges instead of full header -->
+  <div style="position:absolute;top:10px;left:16px;z-index:50;font-family:'Bebas Neue',sans-serif;font-size:clamp(10px,1vw,14px);letter-spacing:3px;background:linear-gradient(90deg,#00E676,#69f0ae);-webkit-background-clip:text;-webkit-text-fill-color:transparent;opacity:0.5;pointer-events:none">THE MARTYN SHOW</div>
+  <div id="dp-qinfo" style="position:absolute;top:10px;right:44px;z-index:50;font-family:'Bebas Neue',sans-serif;font-size:clamp(9px,0.9vw,12px);letter-spacing:2px;color:rgba(255,255,255,0.3);pointer-events:none">VÄNTAR...</div>
+  <button onclick="toggleFS()" id="fsBtn" style="position:absolute;top:8px;right:8px;z-index:50;background:none;border:none;color:rgba(255,255,255,0.12);padding:2px 5px;cursor:pointer;font-size:9px">⛶</button>
+  <div class="dp-timerbar" id="dp-timerbar" style="position:absolute;bottom:0;left:0;right:0;z-index:50"><div class="dp-tbf" id="dp-tbf" style="width:0%"></div></div>
   <!-- Timer sits above scoreboard, hidden until started -->
   <div class="dp-sb-wrap" id="dp-sbw"><div class="dp-sb" id="dp-sb"></div></div>
   <div id="dp-timer-row" style="display:none">
@@ -2297,8 +2293,7 @@ function endLive() {
   document.getElementById('lbadge').style.display = 'none';
   const ssE = document.getElementById('sync-status');
   if (ssE) ssE.style.display = 'none';
-  const bBtn = document.getElementById('podiumBackBtn');
-  if (bBtn) bBtn.style.display = 'none';
+
   // Restore startShowBtn for next time
   const ssb = document.getElementById('startShowBtn');
   if (ssb) ssb.style.display = '';
@@ -2564,9 +2559,6 @@ function showPodium() {
   setTimeout(() => rest.classList.add('show'), 2400);
 
   syncDisp({ state: 'podium', teams: liveState.teams.map(t => ({ ...t })), ts: Date.now() });
-  // Show back button
-  const backBtn = document.getElementById('podiumBackBtn');
-  if (backBtn) backBtn.style.display = 'inline-flex';
 }
 
 /* Close podium AND end the quiz → back to quiz list */
