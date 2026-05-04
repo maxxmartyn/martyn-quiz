@@ -1059,7 +1059,7 @@ select option { background: var(--bg2); }
   display: flex;
   gap: 8px;
   flex-wrap: nowrap;
-  justify-content: stretch;
+  justify-content: center;
   align-items: stretch;
   width: 100%;
 }
@@ -1094,11 +1094,24 @@ select option { background: var(--bg2); }
 .dp-sbc .dp-sbc-info {
   flex: 1;
   min-width: 0;
-  padding: 4px 8px;
-  text-align: left;
+  padding: 4px 6px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 4px;
+}
+.dp-sbc-name-wrap {
+  flex: 2;
+  min-width: 0;
+  overflow: hidden;
+}
+.dp-sbc-score-wrap {
+  flex: 1;
+  text-align: right;
+  flex-shrink: 0;
 }
 .dp-sc-name {
-  font-size: clamp(9px, 1vw, 13px);
+  font-size: clamp(10px, 1.1vw, 15px);
   font-weight: 800;
   letter-spacing: 0;
   text-transform: uppercase;
@@ -1107,13 +1120,14 @@ select option { background: var(--bg2); }
   overflow: hidden;
   text-overflow: ellipsis;
   width: 100%;
-  margin-bottom: 2px;
+  line-height: 1;
 }
 .dp-sc-score {
   font-family: 'Bebas Neue', sans-serif;
-  font-size: clamp(20px,3vh,40px);
+  font-size: clamp(22px,3.2vh,44px);
   color: #fff;
   line-height: 1;
+  text-align: right;
 }
 /* LEAD — larger card */
 .dp-sbc.lead {
@@ -2820,7 +2834,7 @@ function renderDisplay(data) {
           </div>
           <div class="dp-sbc-info" style="background:${isLead ? 'rgba(255,215,0,0.08)' : t.color+'22'}">
             <div class="dp-sc-name">${esc(t.name)}</div>
-            <div class="dp-sc-score" data-score>${hidden ? '?' : t.score}</div>
+            <div class="dp-sc-score">${hidden ? '?' : t.score}</div>
           </div>
         </div>`;
       }).join('');
@@ -2831,7 +2845,7 @@ function renderDisplay(data) {
         const card = sb.children[i];
         if (!card) return;
         const isLead = !hidden && t.score === mx && t.score > 0;
-        const scoreEl = card.querySelector('[data-score]');
+        const scoreEl = card.querySelector('.dp-sc-score');
         const scoreChanged = window._prevScores[t.name] !== undefined && window._prevScores[t.name] !== t.score;
         window._prevScores[t.name] = t.score;
         // Update score value
@@ -2842,6 +2856,8 @@ function renderDisplay(data) {
         card.style.borderColor = isLead ? 'rgba(255,215,0,0.7)' : t.color+'88';
         const info = card.querySelector('.dp-sbc-info');
         if (info) info.style.background = isLead ? 'rgba(255,215,0,0.08)' : t.color+'22';
+        const nameEl = card.querySelector('.dp-sc-name');
+        if (nameEl) nameEl.textContent = t.name;
         // Remove pop class after animation
         if (scoreChanged) setTimeout(() => card.classList.remove('score-pop'), 700);
       });
@@ -2898,7 +2914,7 @@ function buildDpQuestion(q, revealed, data) {
 
   // Show category badge if we're in a category
   if (data && data.currentRound) {
-    html += `<div style="font-family:'Bebas Neue',sans-serif;font-size:clamp(16px,2.5vw,26px);letter-spacing:4px;text-transform:uppercase;color:#60b4ff;padding:10px 28px;border:2px solid rgba(100,180,255,0.4);background:rgba(100,180,255,0.08);box-shadow:0 0 20px rgba(100,180,255,0.1)">📋 ${esc(data.currentRound)}</div>`;
+    // Round label shown in top-right corner (dp-qinfo) — not in main content
   }
 
   const isOpen = q.type === 'open' || q.type === 'audience';
