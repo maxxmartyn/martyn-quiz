@@ -1049,7 +1049,7 @@ select option { background: var(--bg2); }
 /* ── Scoreboard ── */
 .dp-sb-wrap {
   display: none;
-  padding: 28px 16px 0;
+  padding: 32px 12px 8px;
   flex-shrink: 0;
   position: relative;
   z-index: 2;
@@ -1057,14 +1057,15 @@ select option { background: var(--bg2); }
 }
 .dp-sb {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   flex-wrap: nowrap;
-  justify-content: center;
-  align-items: flex-end;
+  justify-content: stretch;
+  align-items: stretch;
+  width: 100%;
 }
 .dp-sbc {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
   border-radius: 10px;
   border: 2px solid transparent;
@@ -1073,11 +1074,14 @@ select option { background: var(--bg2); }
   position: relative;
   flex-shrink: 1;
   min-width: 0;
-  width: clamp(80px, 8.5vw, 128px);
+  height: clamp(52px, 7vh, 80px);
+  flex: 1;
+  max-width: clamp(140px, 16vw, 220px);
 }
 .dp-sbc .dp-sbc-img {
-  width: 100%;
+  height: 100%;
   aspect-ratio: 1;
+  flex-shrink: 0;
   overflow: hidden;
   display: flex;
   align-items: center;
@@ -1088,41 +1092,42 @@ select option { background: var(--bg2); }
   width: 100%; height: 100%; object-fit: cover; display: block;
 }
 .dp-sbc .dp-sbc-info {
-  width: 100%;
-  padding: 3px 4px 4px;
-  text-align: center;
+  flex: 1;
+  min-width: 0;
+  padding: 4px 8px;
+  text-align: left;
 }
 .dp-sc-name {
-  font-size: clamp(7px,0.75vw,10px);
-  font-weight: 700;
-  letter-spacing: 0px;
+  font-size: clamp(9px, 1vw, 13px);
+  font-weight: 800;
+  letter-spacing: 0;
   text-transform: uppercase;
-  color: rgba(255,255,255,0.85);
+  color: rgba(255,255,255,0.9);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   width: 100%;
-  margin-bottom: 1px;
-  padding: 0 2px;
+  margin-bottom: 2px;
 }
 .dp-sc-score {
   font-family: 'Bebas Neue', sans-serif;
-  font-size: clamp(18px,2.8vh,36px);
+  font-size: clamp(20px,3vh,40px);
   color: #fff;
   line-height: 1;
 }
 /* LEAD — larger card */
 .dp-sbc.lead {
-  width: clamp(100px, 10.5vw, 160px) !important;
+  max-width: clamp(170px, 20vw, 260px) !important;
   border-color: rgba(255,215,0,0.8) !important;
   box-shadow:
     0 0 0 2px rgba(255,215,0,0.3),
     0 0 24px rgba(255,215,0,0.5),
     0 0 48px rgba(255,215,0,0.15);
   z-index: 3;
+  height: clamp(64px, 8.5vh, 96px);
 }
-.dp-sbc.lead .dp-sc-score { color: #FFD700; font-size: clamp(22px,3.2vh,42px); }
-.dp-sbc.lead .dp-sc-name  { color: rgba(255,215,0,0.9); font-size: clamp(9px,1vw,13px); }
+.dp-sbc.lead .dp-sc-score { color: #FFD700; font-size: clamp(24px,3.8vh,48px); }
+.dp-sbc.lead .dp-sc-name  { color: rgba(255,215,0,0.95); font-size: clamp(11px,1.2vw,16px); }
 @keyframes scorePop {
   0%   { filter: brightness(1); }
   40%  { filter: brightness(1.8) saturate(1.4); }
@@ -1138,7 +1143,7 @@ select option { background: var(--bg2); }
   flex-direction: column;
   min-height: 0;
   align-items: center; justify-content: center;
-  padding: 4px 28px; gap: 4px;
+  padding: 4px 16px; gap: 6px;
   overflow: hidden; position: relative; z-index: 1; min-height: 0;
 }
 @keyframes qSlideIn {
@@ -1165,7 +1170,7 @@ select option { background: var(--bg2); }
 /* ── Question text ── */
 .dp-q-text {
   font-family: 'Space Grotesk', sans-serif;
-  font-size: clamp(22px, 3.2vw, 46px);
+  font-size: clamp(26px, 3.8vw, 56px);
   font-weight: 800; text-align: center; line-height: 1.2;
   max-width: 1040px; color: #fff; flex-shrink: 1;
   text-shadow: 0 2px 20px rgba(0,0,0,0.5);
@@ -1174,7 +1179,7 @@ select option { background: var(--bg2); }
 
 /* ── Image ── */
 .dp-q-img {
-  max-height: min(26vh, 280px); max-width: 88%;
+  max-height: min(36vh, 380px); max-width: 96%;
   object-fit: contain; border-radius: 14px;
   box-shadow: 0 12px 48px rgba(0,0,0,0.6);
   display: block; flex-shrink: 1;
@@ -1185,13 +1190,13 @@ select option { background: var(--bg2); }
 /* Each answer gets a distinct colour */
 .dp-choices {
   display: grid; grid-template-columns: 1fr 1fr;
-  gap: 8px; width: 100%; max-width: 1000px; flex-shrink: 1; min-height: 0;
+  gap: 8px; width: 100%; flex-shrink: 1; min-height: 0;
 }
 .dp-choice {
   border-radius: 10px;
-  padding: 14px 20px;
+  padding: clamp(10px,1.8vh,20px) clamp(12px,1.5vw,24px);
   display: flex; align-items: center; gap: 14px;
-  font-size: clamp(14px, 1.9vw, 20px); font-weight: 700;
+  font-size: clamp(16px, 2.2vw, 26px); font-weight: 700;
   color: #fff; transition: all 0.3s;
   border: none;
   position: relative; overflow: hidden;
@@ -1416,23 +1421,12 @@ select option { background: var(--bg2); }
 </div>
 
 <!-- ===================== PODIUM ===================== -->
-<div id="pod-overlay">
-  <div class="show-badge" style="margin-bottom:10px">THE MARTYN SHOW</div>
-  <div class="pod-title">🏆 SLUTRESULTAT</div>
-  <div class="pod-stage" id="pod-stage"></div>
-  <div class="pod-rest" id="pod-rest"></div>
-  <div style="display:flex;gap:12px;margin-top:16px">
-    <button class="btn btn-secondary" id="podiumBackBtn" onclick="backFromPodium()">← Tillbaka till quiz</button>
-    <button class="btn btn-danger" onclick="closePodiumAndEnd()">✕ Stäng & Avsluta Quiz</button>
-  </div>
-</div>
-
 <!-- ===================== DISPLAY ===================== -->
 <div id="display-panel">
   <!-- Corner badges instead of full header -->
   <div style="position:absolute;top:10px;left:16px;z-index:50;font-family:'Bebas Neue',sans-serif;font-size:clamp(10px,1vw,14px);letter-spacing:3px;background:linear-gradient(90deg,#00E676,#69f0ae);-webkit-background-clip:text;-webkit-text-fill-color:transparent;opacity:0.5;pointer-events:none">THE MARTYN SHOW</div>
   <div id="dp-qinfo" style="position:absolute;top:10px;right:44px;z-index:50;font-family:'Bebas Neue',sans-serif;font-size:clamp(9px,0.9vw,12px);letter-spacing:2px;color:rgba(255,255,255,0.3);pointer-events:none">VÄNTAR...</div>
-  <button onclick="toggleFS()" id="fsBtn" style="position:absolute;top:8px;right:8px;z-index:50;background:none;border:none;color:rgba(255,255,255,0.12);padding:2px 5px;cursor:pointer;font-size:9px">⛶</button>
+  <button onclick="toggleFS()" id="fsBtn" style="position:absolute;top:8px;right:8px;z-index:50;background:rgba(239,68,68,0.7);border:none;color:#fff;padding:5px 10px;cursor:pointer;font-size:13px;border-radius:6px;letter-spacing:1px;font-family:monospace">⛶</button>
   <div class="dp-timerbar" id="dp-timerbar" style="position:absolute;bottom:0;left:0;right:0;z-index:50"><div class="dp-tbf" id="dp-tbf" style="width:0%"></div></div>
   <!-- Timer sits above scoreboard, hidden until started -->
   <div class="dp-sb-wrap" id="dp-sbw"><div class="dp-sb" id="dp-sb"></div></div>
@@ -2563,12 +2557,10 @@ function showPodium() {
 
 /* Close podium AND end the quiz → back to quiz list */
 function backFromPodium() {
-  const backBtn = document.getElementById('podiumBackBtn');
-  if (backBtn) backBtn.style.display = 'none';
   document.getElementById('pod-overlay').classList.remove('open');
   [1,2,3].forEach(p => document.getElementById('pc'+p)?.classList.remove('show'));
   document.getElementById('pod-rest').classList.remove('show');
-  syncDisp(); // re-show current question
+  syncDisp(); // re-show current question on display
 }
 
 function closePodiumAndEnd() {
@@ -3139,5 +3131,16 @@ document.addEventListener('fullscreenchange', () => {
   }
 })();
 </script>
+<!-- Pod overlay at body level so position:fixed works correctly -->
+<div id="pod-overlay">
+  <div class="show-badge" style="margin-bottom:10px">THE MARTYN SHOW</div>
+  <div class="pod-title">🏆 SLUTRESULTAT</div>
+  <div class="pod-stage" id="pod-stage"></div>
+  <div class="pod-rest" id="pod-rest"></div>
+  <div style="display:flex;gap:12px;margin-top:16px">
+    <button class="btn btn-secondary" id="podiumBackBtn" onclick="backFromPodium()">← Tillbaka till quiz</button>
+    <button class="btn btn-danger" onclick="closePodiumAndEnd()">✕ Stäng & Avsluta Quiz</button>
+  </div>
+</div>
 </body>
 </html>
