@@ -1440,7 +1440,7 @@ select option { background: var(--bg2); }
   <!-- Corner badges instead of full header -->
   <div style="position:absolute;top:10px;left:16px;z-index:50;font-family:'Bebas Neue',sans-serif;font-size:clamp(10px,1vw,14px);letter-spacing:3px;background:linear-gradient(90deg,#00E676,#69f0ae);-webkit-background-clip:text;-webkit-text-fill-color:transparent;opacity:0.5;pointer-events:none">THE MARTYN SHOW</div>
   <div id="dp-qinfo" style="position:absolute;top:10px;right:44px;z-index:50;font-family:'Bebas Neue',sans-serif;font-size:clamp(9px,0.9vw,12px);letter-spacing:2px;color:rgba(255,255,255,0.3);pointer-events:none">VÄNTAR...</div>
-  <button onclick="toggleFS()" id="fsBtn" style="position:absolute;top:8px;right:8px;z-index:50;background:rgba(239,68,68,0.7);border:none;color:#fff;padding:5px 10px;cursor:pointer;font-size:13px;border-radius:6px;letter-spacing:1px;font-family:monospace">⛶</button>
+  <button onclick="toggleFS()" id="fsBtn" style="position:absolute;top:8px;right:8px;z-index:50;background:none;border:none;color:rgba(239,68,68,0.7);padding:2px 4px;cursor:pointer;font-size:16px;line-height:1">⛶</button>
   <div class="dp-timerbar" id="dp-timerbar" style="position:absolute;bottom:0;left:0;right:0;z-index:50"><div class="dp-tbf" id="dp-tbf" style="width:0%"></div></div>
   <!-- Timer sits above scoreboard, hidden until started -->
   <div class="dp-sb-wrap" id="dp-sbw"><div class="dp-sb" id="dp-sb"></div></div>
@@ -3131,7 +3131,7 @@ function toggleFS() {
 document.addEventListener('fullscreenchange', () => {
   const btn = document.getElementById('fsBtn');
   if (!btn) return;
-  btn.textContent = document.fullscreenElement ? '✕ AVSLUTA FULLSKÄRM' : '⛶ FULLSKÄRM';
+  btn.textContent = '⛶';
 });
 
 /* ============================================================
