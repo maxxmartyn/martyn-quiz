@@ -2658,10 +2658,10 @@ function syncDispTimer() {
 // Score-only update
 function syncDispScore() {
   if (!liveState) return;
-  // Single write to avoid double onValue trigger on display
   fbWrite(FB_DISP + '/score', {
     scoresHidden,
-    teams: liveState.teams.map(t => ({ name: t.name, score: t.score, color: t.color, avatar: t.avatar||'' }))
+    teams: liveState.teams.map(t => ({ name: t.name, score: t.score, color: t.color, avatar: t.avatar||'' })),
+    ts: Date.now()  // unique timestamp so display knows it's score-only
   });
 }
 
@@ -2792,8 +2792,18 @@ function renderDisplay(data) {
     }
   }
 
-  // If no question data — score-only update, scoreboard already updated above
+  // If only score changed (scoreTs is new but nothing else changed) — skip question rebuild
   if (!q || q.idx === undefined) return;
+  const newScoreTs = data.score?.ts || 0;
+  if (newScoreTs && newScoreTs === window._prevScoreTs) {
+    // Score didn't change either — nothing to do
+  }
+  if (newScoreTs && newScoreTs !== window._prevScoreTs) {
+    window._prevScoreTs = newScoreTs;
+    // Score changed — scoreboard already updated, skip question rebuild
+    return;
+  }
+  window._prevScoreTs = newScoreTs;
   // Timer may come from top-level (full sync) or nested /timer object (timer-only sync)
   const tv   = data.timer?.tv   ?? data.tv   ?? 0;
   const tmax = data.timer?.tmax ?? data.tmax ?? 30;
