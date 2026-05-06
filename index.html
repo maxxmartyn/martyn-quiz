@@ -3190,17 +3190,19 @@ function maybeClose(e) { if (e.target === document.getElementById('mbg')) closeM
 
 /* ── Confetti on podium ── */
 function fitNames() {
-  // Double rAF ensures browser has fully laid out the DOM
   requestAnimationFrame(() => requestAnimationFrame(() => {
     document.querySelectorAll('.dp-sbc-name-wrap').forEach(wrap => {
       const nameEl = wrap.querySelector('.dp-sc-name');
       if (!nameEl) return;
-      const available = wrap.offsetWidth - 6;
+      const available = wrap.offsetWidth - 8;
       if (available <= 0) return;
-      // Start from a readable minimum, find largest that fits
-      let lo = 11, hi = 48;
-      nameEl.style.fontSize = hi + 'px';
+      // Temporarily disable clipping so we can measure true text width
+      nameEl.style.overflow = 'visible';
+      nameEl.style.textOverflow = 'clip';
       nameEl.style.whiteSpace = 'nowrap';
+      // Binary search for largest font that fits
+      let lo = 10, hi = 48;
+      nameEl.style.fontSize = hi + 'px';
       while (hi - lo > 0.5) {
         const mid = (lo + hi) / 2;
         nameEl.style.fontSize = mid + 'px';
@@ -3208,6 +3210,9 @@ function fitNames() {
         else hi = mid;
       }
       nameEl.style.fontSize = Math.floor(lo) + 'px';
+      // Restore clipping
+      nameEl.style.overflow = 'hidden';
+      nameEl.style.textOverflow = 'ellipsis';
     });
   }));
 }
