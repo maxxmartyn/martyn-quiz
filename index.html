@@ -2324,6 +2324,7 @@ function toggleScores() {
   scoresHidden = !scoresHidden;
   const btn = document.getElementById('toggleScoreBtn');
   if (btn) btn.textContent = scoresHidden ? '👁 Visa poäng' : '👁 Dölj poäng';
+  renderScEnt(); // refresh score entry to show/hide names and scores
   syncDispScore(); // re-push with hidden flag
 }
 
@@ -2478,17 +2479,14 @@ function stopTimer() {
 ============================================================ */
 function renderScEnt() {
   if (!liveState) return;
-  // Keep score entry in ORIGINAL team order (never sort) to avoid index bugs
-  // Sort by score desc, but keep original index for apSc
   const ranked = liveState.teams
     .map((t, i) => ({ ...t, origIdx: i }))
     .sort((a, b) => b.score - a.score);
-  const medals = ['🥇','🥈','🥉'];
   document.getElementById('score-entry').innerHTML = ranked.map((t, rank) => `
     <div class="scrow" style="border-left:4px solid ${t.color};background:${t.color}15">
       <div style="width:14px;height:14px;border-radius:50%;background:${t.color};flex-shrink:0;box-shadow:0 0 8px ${t.color}"></div>
-      <div class="scname" style="font-size:15px;font-weight:800;color:#fff">${esc(t.name)}</div>
-      <div class="sctot" id="stot_${t.origIdx}">${t.score}</div>
+      <div class="scname" style="font-size:15px;font-weight:800;color:${scoresHidden ? 'rgba(255,255,255,0.25)' : '#fff'}">${scoresHidden ? '— dolt —' : esc(t.name)}</div>
+      <div class="sctot" id="stot_${t.origIdx}" style="color:${scoresHidden ? 'transparent' : 'var(--green)'};text-shadow:${scoresHidden ? '0 0 8px rgba(255,255,255,0.3)' : 'none'}">${t.score}</div>
       <div class="sciw">
         <button class="scb m" onclick="apSc(${t.origIdx},-1)">−</button>
         <input type="number" id="pts_${t.origIdx}" value="1" style="width:52px;text-align:center">
@@ -3236,9 +3234,10 @@ document.addEventListener('keydown', e => {
   <div class="pod-stage" id="pod-stage"></div>
   <div class="pod-rest" id="pod-rest"></div>
   <div style="display:flex;gap:12px;margin-top:16px">
-    <button class="btn btn-secondary" id="podiumBackBtn" onclick="backFromPodium()">← Tillbaka till quiz</button>
-    <button class="btn btn-danger" onclick="closePodiumAndEnd()">✕ Stäng & Avsluta Quiz</button>
+    <button onclick="backFromPodium()" style="padding:12px 28px;font-size:15px;font-weight:800;letter-spacing:1px;cursor:pointer;border:2px solid rgba(255,255,255,0.3);background:rgba(255,255,255,0.1);color:#fff;border-radius:8px">← TILLBAKA TILL QUIZ</button>
+    <button onclick="closePodiumAndEnd()" style="padding:12px 28px;font-size:15px;font-weight:800;letter-spacing:1px;cursor:pointer;border:2px solid rgba(239,68,68,0.6);background:rgba(239,68,68,0.2);color:#f87171;border-radius:8px">✕ AVSLUTA QUIZ</button>
   </div>
+  <div style="font-size:12px;color:rgba(255,255,255,0.2);letter-spacing:1px;margin-top:4px">ESC = tillbaka till quiz</div>
 </div>
 </body>
 </html>
