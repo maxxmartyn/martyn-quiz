@@ -1200,10 +1200,14 @@ select option { background: var(--bg2); }
 
 /* ── Image ── */
 .dp-q-img {
-  max-height: min(36vh, 380px); max-width: 96%;
-  object-fit: contain; border-radius: 14px;
-  box-shadow: 0 12px 48px rgba(0,0,0,0.6);
-  display: block; flex-shrink: 1;
+  width: 100%;
+  max-width: 100%;
+  max-height: min(38vh, 400px);
+  height: auto;
+  object-fit: contain;
+  flex-shrink: 1;
+  min-height: 0;
+  border-radius: 10px;
 }
 
 
