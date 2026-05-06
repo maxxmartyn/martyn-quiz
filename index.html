@@ -2830,10 +2830,12 @@ function renderDisplay(data) {
           const info = card.querySelector('.dp-sbc-info');
           if (info) info.style.background = isLead ? 'rgba(255,215,0,0.08)' : t.color+'22';
           if (scoreChanged) setTimeout(() => card.classList.remove('score-pop'), 700);
-
           // Reorder DOM to match new sort
           sb.appendChild(card);
         });
+
+        // Re-fit all names after any update (card widths may have changed)
+        fitNames();
 
         if (orderChanged) {
           // PLAY phase: animate from old position to new position
