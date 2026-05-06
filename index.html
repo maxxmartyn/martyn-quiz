@@ -2804,7 +2804,7 @@ function renderDisplay(data) {
             </div>
           </div>`;
         }).join('');
-        requestAnimationFrame(fitNames);
+      fitNames();
       } else {
         // FLIP animation for reordering + in-place score updates
         const cards = {};
@@ -2852,12 +2852,12 @@ function renderDisplay(data) {
               requestAnimationFrame(() => {
                 el.style.transition = 'transform 0.5s cubic-bezier(.34,1.3,.64,1)';
                 el.style.transform = 'translateX(0)';
-                setTimeout(() => { el.style.transition = ''; el.style.transform = ''; }, 550);
+                setTimeout(() => { el.style.transition = ''; el.style.transform = ''; fitNames(); }, 550);
               });
             });
           });
         }
-        requestAnimationFrame(fitNames);
+      fitNames();
       }
     }
   }
@@ -3188,22 +3188,26 @@ function maybeClose(e) { if (e.target === document.getElementById('mbg')) closeM
 
 /* ── Confetti on podium ── */
 function fitNames() {
-  document.querySelectorAll('.dp-sbc-name-wrap').forEach(wrap => {
-    const nameEl = wrap.querySelector('.dp-sc-name');
-    if (!nameEl) return;
-    const available = wrap.offsetWidth - 4;
-    if (available <= 0) return;
-    // Binary search for best font size
-    let lo = 12, hi = 52;
-    nameEl.style.fontSize = hi + 'px';
-    while (hi - lo > 0.5) {
-      const mid = (lo + hi) / 2;
-      nameEl.style.fontSize = mid + 'px';
-      if (nameEl.scrollWidth <= available) lo = mid;
-      else hi = mid;
-    }
-    nameEl.style.fontSize = lo + 'px';
-  });
+  // Double rAF ensures browser has fully laid out the DOM
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    document.querySelectorAll('.dp-sbc-name-wrap').forEach(wrap => {
+      const nameEl = wrap.querySelector('.dp-sc-name');
+      if (!nameEl) return;
+      const available = wrap.offsetWidth - 6;
+      if (available <= 0) return;
+      // Start from a readable minimum, find largest that fits
+      let lo = 11, hi = 48;
+      nameEl.style.fontSize = hi + 'px';
+      nameEl.style.whiteSpace = 'nowrap';
+      while (hi - lo > 0.5) {
+        const mid = (lo + hi) / 2;
+        nameEl.style.fontSize = mid + 'px';
+        if (nameEl.scrollWidth <= available) lo = mid;
+        else hi = mid;
+      }
+      nameEl.style.fontSize = Math.floor(lo) + 'px';
+    });
+  }));
 }
 
 function launchConfetti() {
