@@ -1148,6 +1148,12 @@ select option { background: var(--bg2); }
   100% { filter: brightness(1); }
 }
 .dp-sbc.score-pop { animation: scorePop 0.6s ease; }
+@keyframes rankUp {
+  0%   { filter: brightness(1); box-shadow: none; }
+  30%  { filter: brightness(2) saturate(1.6); box-shadow: 0 0 30px rgba(255,255,255,0.6); }
+  100% { filter: brightness(1); box-shadow: none; }
+}
+.dp-sbc.rank-up { animation: rankUp 0.8s ease; }
 
 /* ── Main content area ── */
 .dp-main {
@@ -2753,9 +2759,12 @@ function renderDisplay(data) {
       const display = hidden ? [...teams] : sorted;
       if (!window._prevScores) window._prevScores = {};
       const displayKey = display.map(t=>t.name).join(',') + '|' + String(hidden);
-      const needsRebuild = sb.children.length !== display.length || sb.dataset.key !== displayKey;
+      const orderChanged = sb.dataset.key !== displayKey;
+      const countChanged = sb.children.length !== display.length;
       sb.dataset.key = displayKey;
-      if (needsRebuild) {
+
+      if (countChanged) {
+        // Full rebuild only when team count changes (first render)
         display.forEach(t => { window._prevScores[t.name] = t.score; });
         sb.innerHTML = display.map(t => {
           const isLead = !hidden && t.score === mx && t.score > 0;
@@ -2771,23 +2780,57 @@ function renderDisplay(data) {
           </div>`;
         }).join('');
       } else {
+        // FLIP animation for reordering + in-place score updates
+        const cards = {};
+        Array.from(sb.children).forEach(el => {
+          cards[el.dataset.name] = el;
+          // Record position BEFORE reorder
+          el._flipRect = el.getBoundingClientRect();
+        });
+
         display.forEach((t, i) => {
-          const card = sb.children[i];
+          const card = cards[t.name];
           if (!card) return;
           const isLead = !hidden && t.score === mx && t.score > 0;
           const scoreEl = card.querySelector('.dp-sc-score');
           const scoreChanged = window._prevScores[t.name] !== undefined && window._prevScores[t.name] !== t.score;
           window._prevScores[t.name] = t.score;
+
+          // Update score and styling
           if (scoreEl) scoreEl.textContent = hidden ? '?' : t.score;
           card.className = 'dp-sbc' + (isLead ? ' lead' : '') + (scoreChanged ? ' score-pop' : '');
           card.style.background = isLead ? 'rgba(255,215,0,0.12)' : t.color+'18';
           card.style.borderColor = isLead ? 'rgba(255,215,0,0.7)' : t.color+'88';
           const info = card.querySelector('.dp-sbc-info');
           if (info) info.style.background = isLead ? 'rgba(255,215,0,0.08)' : t.color+'22';
-          const nameEl = card.querySelector('.dp-sc-name');
-          if (nameEl) nameEl.textContent = t.name;
           if (scoreChanged) setTimeout(() => card.classList.remove('score-pop'), 700);
+
+          // Reorder DOM to match new sort
+          sb.appendChild(card);
         });
+
+        if (orderChanged) {
+          // PLAY phase: animate from old position to new position
+          Array.from(sb.children).forEach(el => {
+            if (!el._flipRect) return;
+            const newRect = el.getBoundingClientRect();
+            const dx = el._flipRect.left - newRect.left;
+            if (Math.abs(dx) < 2) return; // no movement
+            // Flash the card that moved up (overtook someone)
+            el.classList.add('rank-up');
+            setTimeout(() => el.classList.remove('rank-up'), 800);
+            // Animate position
+            el.style.transition = 'none';
+            el.style.transform = `translateX(${dx}px)`;
+            requestAnimationFrame(() => {
+              requestAnimationFrame(() => {
+                el.style.transition = 'transform 0.5s cubic-bezier(.34,1.3,.64,1)';
+                el.style.transform = 'translateX(0)';
+                setTimeout(() => { el.style.transition = ''; el.style.transform = ''; }, 550);
+              });
+            });
+          });
+        }
       }
     }
   }
