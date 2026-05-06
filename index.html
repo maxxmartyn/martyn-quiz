@@ -1208,12 +1208,17 @@ select option { background: var(--bg2); }
 }
 .dp-choice {
   border-radius: 10px;
-  padding: clamp(10px,1.8vh,20px) clamp(12px,1.5vw,24px);
-  display: flex; align-items: center; gap: 14px;
-  font-size: clamp(16px, 2.2vw, 26px); font-weight: 700;
+  padding: clamp(8px,1.5vh,18px) clamp(10px,1.2vw,20px);
+  display: flex; align-items: center; gap: 10px;
+  font-size: clamp(13px, 1.9vw, 24px); font-weight: 700;
   color: #fff; transition: all 0.3s;
   border: none;
-  position: relative; overflow: hidden;
+  position: relative;
+  overflow: hidden;
+  /* Allow text to wrap within choice box */
+  word-break: break-word;
+  white-space: normal;
+  align-items: flex-start;
 }
 /* Colours per choice: A=red, B=blue, C=yellow, D=green */
 .dp-choice:nth-child(1) { background: linear-gradient(135deg,#e53e3e,#c53030); }
@@ -1221,9 +1226,9 @@ select option { background: var(--bg2); }
 .dp-choice:nth-child(3) { background: linear-gradient(135deg,#d69e2e,#b7791f); }
 .dp-choice:nth-child(4) { background: linear-gradient(135deg,#38a169,#276749); }
 .dp-choice-letter {
-  font-family: 'Bebas Neue', sans-serif; font-size: 26px;
-  color: rgba(255,255,255,0.9); min-width: 30px; letter-spacing: 1px;
-  flex-shrink: 0;
+  font-family: 'Bebas Neue', sans-serif; font-size: clamp(18px,2.5vw,26px);
+  color: rgba(255,255,255,0.9); min-width: 26px; letter-spacing: 1px;
+  flex-shrink: 0; line-height: 1.3;
 }
 /* Correct: bright + checkmark glow */
 .dp-choice.dpc { filter: brightness(1.25); box-shadow: 0 0 30px rgba(255,255,255,0.3); }
@@ -2819,8 +2824,9 @@ function renderDisplay(data) {
     const display = hidden ? [...teams] : sorted;
     // Track previous scores for animation
     if (!window._prevScores) window._prevScores = {};
-    const needsRebuild = sb.children.length !== display.length || sb.dataset.hidden !== String(hidden);
-    sb.dataset.hidden = String(hidden);
+    const displayKey = display.map(t=>t.name).join(',') + '|' + String(hidden);
+    const needsRebuild = sb.children.length !== display.length || sb.dataset.key !== displayKey;
+    sb.dataset.key = displayKey;
     if (needsRebuild) {
       // Full rebuild only when team count or hidden state changes
       if (!window._prevScores) window._prevScores = {};
@@ -2833,8 +2839,8 @@ function renderDisplay(data) {
             ${t.avatar ? `<img src="${t.avatar}">` : '⚽'}
           </div>
           <div class="dp-sbc-info" style="background:${isLead ? 'rgba(255,215,0,0.08)' : t.color+'22'}">
-            <div class="dp-sc-name">${esc(t.name)}</div>
-            <div class="dp-sc-score">${hidden ? '?' : t.score}</div>
+            <div class="dp-sbc-name-wrap"><div class="dp-sc-name">${esc(t.name)}</div></div>
+            <div class="dp-sbc-score-wrap"><div class="dp-sc-score">${hidden ? '?' : t.score}</div></div>
           </div>
         </div>`;
       }).join('');
@@ -2928,11 +2934,13 @@ function buildDpQuestion(q, revealed, data) {
 
   if (q.type === 'mc') {
     const L = ['A','B','C','D'];
+    const maxOptLen = Math.max(...(q.options||[]).map(o=>o.length));
+    const choiceFontSize = maxOptLen > 80 ? 'clamp(11px,1.4vw,17px)' : maxOptLen > 50 ? 'clamp(12px,1.6vw,20px)' : maxOptLen > 30 ? 'clamp(13px,1.8vw,22px)' : 'clamp(14px,2vw,25px)';
     html += `<div class="dp-choices">${(q.options || []).map((o, i) => {
       const corrArr = toArr(q.correct);
       const cls = revealed ? (corrArr.includes(i) ? 'dpc' : 'dpw') : '';
-      return `<div class="dp-choice ${cls}">
-        <span class="dp-choice-letter">${L[i]}</span>${esc(o)}
+      return `<div class="dp-choice ${cls}" style="font-size:\${choiceFontSize}">
+        <span class="dp-choice-letter">${L[i]}</span><span>${esc(o)}</span>
       </div>`;
     }).join('')}</div>`;
   } else if (q.type === 'tf') {
