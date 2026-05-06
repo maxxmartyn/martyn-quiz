@@ -2485,8 +2485,8 @@ function renderScEnt() {
   document.getElementById('score-entry').innerHTML = ranked.map((t, rank) => `
     <div class="scrow" style="border-left:4px solid ${t.color};background:${t.color}15">
       <div style="width:14px;height:14px;border-radius:50%;background:${t.color};flex-shrink:0;box-shadow:0 0 8px ${t.color}"></div>
-      <div class="scname" style="font-size:15px;font-weight:800;color:${scoresHidden ? 'rgba(255,255,255,0.25)' : '#fff'}">${scoresHidden ? '— dolt —' : esc(t.name)}</div>
-      <div class="sctot" id="stot_${t.origIdx}" style="color:${scoresHidden ? 'transparent' : 'var(--green)'};text-shadow:${scoresHidden ? '0 0 8px rgba(255,255,255,0.3)' : 'none'}">${t.score}</div>
+      <div class="scname" style="font-size:15px;font-weight:800;color:#fff">${esc(t.name)}</div>
+      <div class="sctot" id="stot_${t.origIdx}">${t.score}</div>
       <div class="sciw">
         <button class="scb m" onclick="apSc(${t.origIdx},-1)">−</button>
         <input type="number" id="pts_${t.origIdx}" value="1" style="width:52px;text-align:center">
@@ -2792,7 +2792,7 @@ function renderDisplay(data) {
           if (!card) return;
           const isLead = !hidden && t.score === mx && t.score > 0;
           const scoreEl = card.querySelector('.dp-sc-score');
-          const scoreChanged = window._prevScores[t.name] !== undefined && window._prevScores[t.name] !== t.score;
+          const scoreChanged = !hidden && window._prevScores[t.name] !== undefined && window._prevScores[t.name] !== t.score;
           window._prevScores[t.name] = t.score;
 
           // Update score and styling
@@ -2816,7 +2816,7 @@ function renderDisplay(data) {
             const dx = el._flipRect.left - newRect.left;
             if (Math.abs(dx) < 2) return; // no movement
             // Flash the card that moved up (overtook someone)
-            el.classList.add('rank-up');
+            if (!hidden) el.classList.add('rank-up');
             setTimeout(() => el.classList.remove('rank-up'), 800);
             // Animate position
             el.style.transition = 'none';
