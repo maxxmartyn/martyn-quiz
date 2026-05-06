@@ -2739,6 +2739,61 @@ function renderDisplay(data) {
   if (data.state !== 'live')   return;
 
   const { q, revealed } = data;
+
+  // ── Always update scoreboard first (score-only updates have no q) ──
+  {
+    const sbw = document.getElementById('dp-sbw');
+    const sb  = document.getElementById('dp-sb');
+    const teams = (data.score && data.score.teams) ? data.score.teams : (data.teams || []);
+    const hidden = (data.score && data.score.scoresHidden) ? data.score.scoresHidden : (data.scoresHidden === true);
+    if (teams && teams.length) {
+      if (sbw.style.display === 'none') sbw.style.display = 'block';
+      const mx = Math.max(...teams.map(t => t.score));
+      const sorted = [...teams].sort((a, b) => b.score - a.score);
+      const display = hidden ? [...teams] : sorted;
+      if (!window._prevScores) window._prevScores = {};
+      const displayKey = display.map(t=>t.name).join(',') + '|' + String(hidden);
+      const needsRebuild = sb.children.length !== display.length || sb.dataset.key !== displayKey;
+      sb.dataset.key = displayKey;
+      if (needsRebuild) {
+        display.forEach(t => { window._prevScores[t.name] = t.score; });
+        sb.innerHTML = display.map(t => {
+          const isLead = !hidden && t.score === mx && t.score > 0;
+          return `<div class="dp-sbc ${isLead ? 'lead' : ''}" data-name="${esc(t.name)}"
+            style="background:${isLead ? 'rgba(255,215,0,0.12)' : t.color+'18'};border-color:${isLead ? 'rgba(255,215,0,0.7)' : t.color+'88'}">
+            <div class="dp-sbc-img" style="background:${t.color}22">
+              ${t.avatar ? `<img src="${t.avatar}">` : '⚽'}
+            </div>
+            <div class="dp-sbc-info" style="background:${isLead ? 'rgba(255,215,0,0.08)' : t.color+'22'}">
+              <div class="dp-sbc-name-wrap"><div class="dp-sc-name">${esc(t.name)}</div></div>
+              <div class="dp-sbc-score-wrap"><div class="dp-sc-score">${hidden ? '?' : t.score}</div></div>
+            </div>
+          </div>`;
+        }).join('');
+      } else {
+        display.forEach((t, i) => {
+          const card = sb.children[i];
+          if (!card) return;
+          const isLead = !hidden && t.score === mx && t.score > 0;
+          const scoreEl = card.querySelector('.dp-sc-score');
+          const scoreChanged = window._prevScores[t.name] !== undefined && window._prevScores[t.name] !== t.score;
+          window._prevScores[t.name] = t.score;
+          if (scoreEl) scoreEl.textContent = hidden ? '?' : t.score;
+          card.className = 'dp-sbc' + (isLead ? ' lead' : '') + (scoreChanged ? ' score-pop' : '');
+          card.style.background = isLead ? 'rgba(255,215,0,0.12)' : t.color+'18';
+          card.style.borderColor = isLead ? 'rgba(255,215,0,0.7)' : t.color+'88';
+          const info = card.querySelector('.dp-sbc-info');
+          if (info) info.style.background = isLead ? 'rgba(255,215,0,0.08)' : t.color+'22';
+          const nameEl = card.querySelector('.dp-sc-name');
+          if (nameEl) nameEl.textContent = t.name;
+          if (scoreChanged) setTimeout(() => card.classList.remove('score-pop'), 700);
+        });
+      }
+    }
+  }
+
+  // If no question data — score-only update, scoreboard already updated above
+  if (!q || q.idx === undefined) return;
   // Timer may come from top-level (full sync) or nested /timer object (timer-only sync)
   const tv   = data.timer?.tv   ?? data.tv   ?? 0;
   const tmax = data.timer?.tmax ?? data.tmax ?? 30;
@@ -2809,67 +2864,7 @@ function renderDisplay(data) {
     tb.classList.remove('warn');
   }
 
-  // Scoreboard — always rebuild with correct sort + colors
-  const sbw = document.getElementById('dp-sbw');
-  const sb  = document.getElementById('dp-sb');
-  // Teams and hidden flag: support both full sync and score-only sync formats
-  const teams = (data.score && data.score.teams) ? data.score.teams : (data.teams || []);
-  const hidden = (data.score && data.score.scoresHidden) ? data.score.scoresHidden : (data.scoresHidden === true);
-  if (teams && teams.length && sbw.style.display === 'none') sbw.style.display = 'block';
-  if (!teams || !teams.length) sbw.style.display = 'none';
-  if (teams && teams.length) {
-    const mx = Math.max(...teams.map(t => t.score));
-    const sorted = [...teams].sort((a, b) => b.score - a.score);
-    // Always rebuild so order + colors are always correct
-    // When hidden: keep ORIGINAL order (don't reveal ranking by sorting)
-    const display = hidden ? [...teams] : sorted;
-    // Track previous scores for animation
-    if (!window._prevScores) window._prevScores = {};
-    const displayKey = display.map(t=>t.name).join(',') + '|' + String(hidden);
-    const needsRebuild = sb.children.length !== display.length || sb.dataset.key !== displayKey;
-    sb.dataset.key = displayKey;
-    if (needsRebuild) {
-      // Full rebuild only when team count or hidden state changes
-      if (!window._prevScores) window._prevScores = {};
-      display.forEach(t => { window._prevScores[t.name] = t.score; });
-      sb.innerHTML = display.map(t => {
-        const isLead = !hidden && t.score === mx && t.score > 0;
-        return `<div class="dp-sbc ${isLead ? 'lead' : ''}" data-name="${esc(t.name)}"
-          style="background:${isLead ? 'rgba(255,215,0,0.12)' : t.color+'18'};border-color:${isLead ? 'rgba(255,215,0,0.7)' : t.color+'88'}">
-          <div class="dp-sbc-img" style="background:${t.color}22">
-            ${t.avatar ? `<img src="${t.avatar}">` : '⚽'}
-          </div>
-          <div class="dp-sbc-info" style="background:${isLead ? 'rgba(255,215,0,0.08)' : t.color+'22'}">
-            <div class="dp-sbc-name-wrap"><div class="dp-sc-name">${esc(t.name)}</div></div>
-            <div class="dp-sbc-score-wrap"><div class="dp-sc-score">${hidden ? '?' : t.score}</div></div>
-          </div>
-        </div>`;
-      }).join('');
-    } else {
-      // In-place update — no DOM rebuild, no blink
-      if (!window._prevScores) window._prevScores = {};
-      display.forEach((t, i) => {
-        const card = sb.children[i];
-        if (!card) return;
-        const isLead = !hidden && t.score === mx && t.score > 0;
-        const scoreEl = card.querySelector('.dp-sc-score');
-        const scoreChanged = window._prevScores[t.name] !== undefined && window._prevScores[t.name] !== t.score;
-        window._prevScores[t.name] = t.score;
-        // Update score value
-        if (scoreEl) scoreEl.textContent = hidden ? '?' : t.score;
-        // Update lead styling
-        card.className = 'dp-sbc' + (isLead ? ' lead' : '') + (scoreChanged ? ' score-pop' : '');
-        card.style.background = isLead ? 'rgba(255,215,0,0.12)' : t.color+'18';
-        card.style.borderColor = isLead ? 'rgba(255,215,0,0.7)' : t.color+'88';
-        const info = card.querySelector('.dp-sbc-info');
-        if (info) info.style.background = isLead ? 'rgba(255,215,0,0.08)' : t.color+'22';
-        const nameEl = card.querySelector('.dp-sc-name');
-        if (nameEl) nameEl.textContent = t.name;
-        // Remove pop class after animation
-        if (scoreChanged) setTimeout(() => card.classList.remove('score-pop'), 700);
-      });
-    }
-  }
+
 
   // Question — only rebuild when question or reveal state changes
   if (q.idx !== _prevQi || revealed !== _prevRev) {
