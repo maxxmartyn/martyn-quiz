@@ -3092,6 +3092,8 @@ function renderDpPodium(teams) {
   document.getElementById('dp-sbw').style.display = 'none';
   document.getElementById('dp-qinfo').textContent = 'THE MARTYN SHOW';
   document.getElementById('dp-timer-row').style.display = 'none';
+  const m = document.getElementById('dp-main');
+  m.style.cssText = 'display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;width:100%;height:100%;box-sizing:border-box;overflow:hidden;padding:12px';
   launchConfetti();
 
   const sorted = [...teams].sort((a, b) => b.score - a.score);
