@@ -26,13 +26,14 @@
 <script>
 // Cloudinary config — same account as party site
 const CL_CLOUD  = 'dw3xnne9q';
-const CL_PRESET = 'max_martyn_party';
+const CL_PRESET       = 'max_martyn_party';   // avatarer — face detection via preset
+const CL_PRESET_IMG   = 'max_martyn_questions'; // frågbilder — ingen crop
 const CL_URL    = `https://api.cloudinary.com/v1_1/${CL_CLOUD}/image/upload`;
 
-async function uploadToCloudinary(file, folder) {
+async function uploadToCloudinary(file, folder, preset) {
   const fd = new FormData();
   fd.append('file', file);
-  fd.append('upload_preset', CL_PRESET);
+  fd.append('upload_preset', preset || CL_PRESET);
   fd.append('folder', folder || 'quizmaster/misc');
   const r = await fetch(CL_URL, { method: 'POST', body: fd });
   const d = await r.json();
@@ -2075,7 +2076,7 @@ async function upImg(e, i) {
   if (iup) iup.innerHTML = '<div class="iphl">⏳ Laddar upp bild...</div>';
   try {
     const quizName = (getQ(editId)?.name || 'quiz').replace(/[^a-zA-Z0-9åäöÅÄÖ]/g,'_').slice(0,30);
-    const url = await uploadToCloudinary(f, `quizmaster/${quizName}/questions`);
+    const url = await uploadToCloudinary(f, `quizmaster/${quizName}/questions`, CL_PRESET_IMG);
     const q2 = getQ(editId);
     if (q2) q2.questions[i].image = url;
     renderQs();
@@ -2278,7 +2279,7 @@ async function upTeamAvatar(e, i) {
   const wrap = e.target.closest('.trow')?.querySelector('.t-avatar-wrap');
   if (wrap) wrap.innerHTML = '⏳';
   try {
-    const url = await uploadToCloudinary(f, 'quizmaster/avatars');
+    const url = await uploadToCloudinary(f, 'quizmaster/avatars', CL_PRESET);
     lTeams[i].avatar = url;
     renderTeams();
   } catch { alert('Bilduppladdning misslyckades'); renderTeams(); }
@@ -3189,7 +3190,7 @@ function fitNames() {
     const available = wrap.offsetWidth - 4;
     if (available <= 0) return;
     // Binary search for best font size
-    let lo = 8, hi = 22;
+    let lo = 9, hi = 32;
     nameEl.style.fontSize = hi + 'px';
     while (hi - lo > 0.5) {
       const mid = (lo + hi) / 2;
