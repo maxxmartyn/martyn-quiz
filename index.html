@@ -2272,7 +2272,7 @@ function renderTeams() {
       <input type="file" accept="image/*" id="tavfile_${i}" style="display:none" onchange="upTeamAvatar(event,${i})">
       <input type="color" value="${t.color}" oninput="setTeamColor(${i},this.value)"
         style="width:30px;height:30px;border:none;background:transparent;cursor:pointer;padding:0;flex-shrink:0">
-      <input type="text" value="${esc(t.name)}" placeholder="Lagnamn" maxlength="28" oninput="lTeams[${i}].name=this.value.slice(0,28)" style="flex:1">
+      <input type="text" value="${esc(t.name)}" placeholder="Lagnamn" maxlength="24" oninput="lTeams[${i}].name=this.value.slice(0,24)" style="flex:1">
       <button class="btn btn-danger btn-sm" onclick="remTeam(${i})" style="padding:4px 10px">×</button>
     </div>`).join('');
 }
