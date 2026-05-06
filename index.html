@@ -1076,7 +1076,7 @@ select option { background: var(--bg2); }
   position: relative;
   flex-shrink: 1;
   min-width: 0;
-  height: clamp(58px, 8vh, 90px);
+  height: clamp(52px, 7vh, 80px);
   flex: 1;
   max-width: clamp(140px, 16vw, 220px);
 }
@@ -1118,14 +1118,11 @@ select option { background: var(--bg2); }
   letter-spacing: 0;
   text-transform: uppercase;
   color: rgba(255,255,255,0.9);
-  white-space: normal;
+  white-space: nowrap;
   overflow: hidden;
-  word-break: break-word;
+  text-overflow: ellipsis;
   width: 100%;
-  line-height: 1.15;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+  line-height: 1;
 }
 .dp-sc-score {
   font-family: 'Bebas Neue', sans-serif;
@@ -1143,7 +1140,7 @@ select option { background: var(--bg2); }
     0 0 24px rgba(255,215,0,0.5),
     0 0 48px rgba(255,215,0,0.15);
   z-index: 3;
-  height: clamp(72px, 9.5vh, 108px);
+  height: clamp(64px, 8.5vh, 96px);
 }
 .dp-sbc.lead .dp-sc-score { color: #FFD700; font-size: clamp(24px,3.8vh,48px); }
 .dp-sbc.lead .dp-sc-name  { color: rgba(255,215,0,0.95); font-size: clamp(11px,1.2vw,16px); }
@@ -2272,7 +2269,7 @@ function renderTeams() {
       <input type="file" accept="image/*" id="tavfile_${i}" style="display:none" onchange="upTeamAvatar(event,${i})">
       <input type="color" value="${t.color}" oninput="setTeamColor(${i},this.value)"
         style="width:30px;height:30px;border:none;background:transparent;cursor:pointer;padding:0;flex-shrink:0">
-      <input type="text" value="${esc(t.name)}" placeholder="Lagnamn" maxlength="24" oninput="lTeams[${i}].name=this.value.slice(0,24)" style="flex:1">
+      <input type="text" value="${esc(t.name)}" placeholder="Lagnamn" maxlength="14" oninput="lTeams[${i}].name=this.value.slice(0,14)" style="flex:1">
       <button class="btn btn-danger btn-sm" onclick="remTeam(${i})" style="padding:4px 10px">×</button>
     </div>`).join('');
 }
@@ -3201,21 +3198,21 @@ function fitNames() {
       if (available <= 0) return;
       // Temporarily disable clipping so we can measure true text width
       nameEl.style.overflow = 'visible';
-      nameEl.style.whiteSpace = 'normal';
-      nameEl.style.webkitLineClamp = '2';
-      // Binary search: font fits when both lines together don't exceed card height
-      const wrapH = wrap.offsetHeight - 4;
+      nameEl.style.textOverflow = 'clip';
+      nameEl.style.whiteSpace = 'nowrap';
+      // Binary search for largest font that fits
       let lo = 10, hi = 48;
       nameEl.style.fontSize = hi + 'px';
       while (hi - lo > 0.5) {
         const mid = (lo + hi) / 2;
         nameEl.style.fontSize = mid + 'px';
-        // Fits if scrollWidth per line fits (word-break handles wrapping)
         if (nameEl.scrollWidth <= available) lo = mid;
         else hi = mid;
       }
       nameEl.style.fontSize = Math.floor(lo) + 'px';
+      // Restore clipping
       nameEl.style.overflow = 'hidden';
+      nameEl.style.textOverflow = 'ellipsis';
     });
   }));
 }
